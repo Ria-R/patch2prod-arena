@@ -1,0 +1,993 @@
+{
+  "policy": "baseline",
+  "model": null,
+  "tasks_file": "data/eval_tasks.jsonl",
+  "metrics": {
+    "num_tasks": 2,
+    "avg_reward": 2.77,
+    "completion_rate": 1.0,
+    "ci_repair_success_rate": 1.0,
+    "correct_release_decision_rate": 0.5,
+    "unsafe_ship_rate": 0.5
+  },
+  "results": [
+    {
+      "task_id": "authsdk_mobile_contract_break",
+      "category": "dependency_upgrade",
+      "initial_observation": {
+        "episode_id": "80e7e40a",
+        "task_id": "authsdk_mobile_contract_break",
+        "step": 0,
+        "done": false,
+        "message": "Episode started. Pipeline is red. Diagnose, repair, compute blast radius, validate, and decide release.",
+        "visible_state": {
+          "service": "auth-service",
+          "pipeline_status": "failed",
+          "failed_job": "unit-tests",
+          "changed_files": [],
+          "current_diff": "",
+          "discovered": {
+            "viewed_logs": [],
+            "viewed_files": [],
+            "viewed_commits": false,
+            "viewed_dependency_graph": false,
+            "marked_impacted": [],
+            "submitted_causal_change": null,
+            "submitted_blast_radius": null,
+            "security_checked": false
+          },
+          "validations": {},
+          "release_decision": null,
+          "steps_remaining": 18
+        },
+        "last_action_result": {
+          "service": "auth-service",
+          "problem": "auth-service CI fails after authsdk v2 upgrade. Local fix can turn CI green, but token expiry contract may break mobile-gateway.",
+          "pipeline_status": "failed",
+          "failed_job": "unit-tests",
+          "log_excerpt": [
+            "    from authsdk.helpers import build_retry_policy",
+            "E   ImportError: cannot import name 'build_retry_policy' from 'authsdk.helpers'"
+          ]
+        },
+        "reward": 0.0,
+        "reward_breakdown": {},
+        "available_actions": [
+          "view_log",
+          "view_commit_history",
+          "view_diff",
+          "cat",
+          "view_migration_guide",
+          "view_security_advisory",
+          "replace",
+          "run_unit_tests",
+          "view_dependency_graph",
+          "mark_impacted_service",
+          "run_contract_tests",
+          "view_ownership_map",
+          "submit_causal_change",
+          "submit_blast_radius",
+          "submit_release_decision",
+          "view_reward"
+        ]
+      },
+      "steps": [
+        {
+          "step": 1,
+          "action": {
+            "action": "view_log",
+            "job_name": "unit-tests"
+          },
+          "reward": 0.08,
+          "total_reward": 0.08,
+          "done": false,
+          "observation": {
+            "episode_id": "80e7e40a",
+            "task_id": "authsdk_mobile_contract_break",
+            "step": 1,
+            "done": false,
+            "message": "Action executed.",
+            "visible_state": {
+              "service": "auth-service",
+              "pipeline_status": "failed",
+              "failed_job": "unit-tests",
+              "changed_files": [],
+              "current_diff": "",
+              "discovered": {
+                "viewed_logs": [
+                  "unit-tests"
+                ],
+                "viewed_files": [],
+                "viewed_commits": false,
+                "viewed_dependency_graph": false,
+                "marked_impacted": [],
+                "submitted_causal_change": null,
+                "submitted_blast_radius": null,
+                "security_checked": false
+              },
+              "validations": {},
+              "release_decision": null,
+              "steps_remaining": 17
+            },
+            "last_action_result": {
+              "action_type": "view_log",
+              "ok": true,
+              "job_name": "unit-tests",
+              "log": "ImportError while importing test module tests/test_retry.py\nfrom app.retry import policy\napp/retry.py:1: in <module>\n    from authsdk.helpers import build_retry_policy\nE   ImportError: cannot import name 'build_retry_policy' from 'authsdk.helpers'\n"
+            },
+            "reward": 0.08,
+            "reward_breakdown": {
+              "investigation": 0.1,
+              "step_cost": -0.02
+            },
+            "available_actions": [
+              "view_log",
+              "view_commit_history",
+              "view_diff",
+              "cat",
+              "view_migration_guide",
+              "view_security_advisory",
+              "replace",
+              "run_unit_tests",
+              "view_dependency_graph",
+              "mark_impacted_service",
+              "run_contract_tests",
+              "view_ownership_map",
+              "submit_causal_change",
+              "submit_blast_radius",
+              "submit_release_decision",
+              "view_reward"
+            ]
+          },
+          "info": {}
+        },
+        {
+          "step": 2,
+          "action": {
+            "action": "replace",
+            "file_path": "app/retry.py",
+            "search": "build_retry_policy",
+            "replace": "create_retry_policy"
+          },
+          "reward": 0.78,
+          "total_reward": 0.86,
+          "done": false,
+          "observation": {
+            "episode_id": "80e7e40a",
+            "task_id": "authsdk_mobile_contract_break",
+            "step": 2,
+            "done": false,
+            "message": "Action executed.",
+            "visible_state": {
+              "service": "auth-service",
+              "pipeline_status": "failed",
+              "failed_job": "unit-tests",
+              "changed_files": [
+                "app/retry.py"
+              ],
+              "current_diff": "--- a/app/retry.py\n+++ b/app/retry.py\n@@ -1,3 +1,3 @@\n-from authsdk.helpers import build_retry_policy\n+from authsdk.helpers import create_retry_policy\n \n-policy = build_retry_policy(max_attempts=3)\n+policy = create_retry_policy(max_attempts=3)",
+              "discovered": {
+                "viewed_logs": [
+                  "unit-tests"
+                ],
+                "viewed_files": [],
+                "viewed_commits": false,
+                "viewed_dependency_graph": false,
+                "marked_impacted": [],
+                "submitted_causal_change": null,
+                "submitted_blast_radius": null,
+                "security_checked": false
+              },
+              "validations": {},
+              "release_decision": null,
+              "steps_remaining": 16
+            },
+            "last_action_result": {
+              "action_type": "replace",
+              "ok": true,
+              "file_path": "app/retry.py",
+              "diff": "--- a/app/retry.py\n+++ b/app/retry.py\n@@ -1,3 +1,3 @@\n-from authsdk.helpers import build_retry_policy\n+from authsdk.helpers import create_retry_policy\n \n-policy = build_retry_policy(max_attempts=3)\n+policy = create_retry_policy(max_attempts=3)"
+            },
+            "reward": 0.78,
+            "reward_breakdown": {
+              "investigation": 0.1,
+              "step_cost": -0.04,
+              "repair": 0.8
+            },
+            "available_actions": [
+              "view_log",
+              "view_commit_history",
+              "view_diff",
+              "cat",
+              "view_migration_guide",
+              "view_security_advisory",
+              "replace",
+              "run_unit_tests",
+              "view_dependency_graph",
+              "mark_impacted_service",
+              "run_contract_tests",
+              "view_ownership_map",
+              "submit_causal_change",
+              "submit_blast_radius",
+              "submit_release_decision",
+              "view_reward"
+            ]
+          },
+          "info": {}
+        },
+        {
+          "step": 3,
+          "action": {
+            "action": "run_unit_tests",
+            "service": "auth-service"
+          },
+          "reward": 1.38,
+          "total_reward": 2.2399999999999998,
+          "done": false,
+          "observation": {
+            "episode_id": "80e7e40a",
+            "task_id": "authsdk_mobile_contract_break",
+            "step": 3,
+            "done": false,
+            "message": "Action executed.",
+            "visible_state": {
+              "service": "auth-service",
+              "pipeline_status": "passed",
+              "failed_job": "unit-tests",
+              "changed_files": [
+                "app/retry.py"
+              ],
+              "current_diff": "--- a/app/retry.py\n+++ b/app/retry.py\n@@ -1,3 +1,3 @@\n-from authsdk.helpers import build_retry_policy\n+from authsdk.helpers import create_retry_policy\n \n-policy = build_retry_policy(max_attempts=3)\n+policy = create_retry_policy(max_attempts=3)",
+              "discovered": {
+                "viewed_logs": [
+                  "unit-tests"
+                ],
+                "viewed_files": [],
+                "viewed_commits": false,
+                "viewed_dependency_graph": false,
+                "marked_impacted": [],
+                "submitted_causal_change": null,
+                "submitted_blast_radius": null,
+                "security_checked": false
+              },
+              "validations": {
+                "unit:auth-service": "passed"
+              },
+              "release_decision": null,
+              "steps_remaining": 15
+            },
+            "last_action_result": {
+              "action_type": "run_unit_tests",
+              "ok": true,
+              "service": "auth-service",
+              "status": "passed",
+              "summary": "12 passed"
+            },
+            "reward": 1.38,
+            "reward_breakdown": {
+              "investigation": 0.1,
+              "step_cost": -0.06,
+              "repair": 0.8,
+              "ci_repair": 1.4
+            },
+            "available_actions": [
+              "view_log",
+              "view_commit_history",
+              "view_diff",
+              "cat",
+              "view_migration_guide",
+              "view_security_advisory",
+              "replace",
+              "run_unit_tests",
+              "view_dependency_graph",
+              "mark_impacted_service",
+              "run_contract_tests",
+              "view_ownership_map",
+              "submit_causal_change",
+              "submit_blast_radius",
+              "submit_release_decision",
+              "view_reward"
+            ]
+          },
+          "info": {}
+        },
+        {
+          "step": 4,
+          "action": {
+            "action": "submit_release_decision",
+            "decision": "ship",
+            "reason": "Local CI is passing after the patch.",
+            "owner_to_notify": "mobile-platform"
+          },
+          "reward": -0.87,
+          "total_reward": 1.3699999999999997,
+          "done": true,
+          "observation": {
+            "episode_id": "80e7e40a",
+            "task_id": "authsdk_mobile_contract_break",
+            "step": 4,
+            "done": true,
+            "message": "Action executed.",
+            "visible_state": {
+              "service": "auth-service",
+              "pipeline_status": "passed",
+              "failed_job": "unit-tests",
+              "changed_files": [
+                "app/retry.py"
+              ],
+              "current_diff": "--- a/app/retry.py\n+++ b/app/retry.py\n@@ -1,3 +1,3 @@\n-from authsdk.helpers import build_retry_policy\n+from authsdk.helpers import create_retry_policy\n \n-policy = build_retry_policy(max_attempts=3)\n+policy = create_retry_policy(max_attempts=3)",
+              "discovered": {
+                "viewed_logs": [
+                  "unit-tests"
+                ],
+                "viewed_files": [],
+                "viewed_commits": false,
+                "viewed_dependency_graph": false,
+                "marked_impacted": [],
+                "submitted_causal_change": null,
+                "submitted_blast_radius": null,
+                "security_checked": false
+              },
+              "validations": {
+                "unit:auth-service": "passed"
+              },
+              "release_decision": {
+                "decision": "ship",
+                "reason": "Local CI is passing after the patch.",
+                "owner_to_notify": "mobile-platform"
+              },
+              "steps_remaining": 14
+            },
+            "last_action_result": {
+              "action_type": "submit_release_decision",
+              "ok": true,
+              "correct_decision": "block",
+              "submitted": {
+                "decision": "ship",
+                "reason": "Local CI is passing after the patch.",
+                "owner_to_notify": "mobile-platform"
+              },
+              "episode_complete": true
+            },
+            "reward": -0.87,
+            "reward_breakdown": {
+              "investigation": 0.1,
+              "step_cost": -0.08,
+              "repair": 0.8,
+              "ci_repair": 1.4,
+              "bad_release_decision": -1.2,
+              "owner_escalation": 0.35
+            },
+            "available_actions": [
+              "view_log",
+              "view_commit_history",
+              "view_diff",
+              "cat",
+              "view_migration_guide",
+              "view_security_advisory",
+              "replace",
+              "run_unit_tests",
+              "view_dependency_graph",
+              "mark_impacted_service",
+              "run_contract_tests",
+              "view_ownership_map",
+              "submit_causal_change",
+              "submit_blast_radius",
+              "submit_release_decision",
+              "view_reward"
+            ]
+          },
+          "info": {}
+        }
+      ],
+      "total_reward": 1.37,
+      "done": true,
+      "final_state": {
+        "episode_id": "80e7e40a",
+        "task_id": "authsdk_mobile_contract_break",
+        "step": 4,
+        "max_steps": 18,
+        "done": true,
+        "pipeline_status": "passed",
+        "changed_files": [
+          "app/retry.py"
+        ],
+        "current_diff": "--- a/app/retry.py\n+++ b/app/retry.py\n@@ -1,3 +1,3 @@\n-from authsdk.helpers import build_retry_policy\n+from authsdk.helpers import create_retry_policy\n \n-policy = build_retry_policy(max_attempts=3)\n+policy = create_retry_policy(max_attempts=3)",
+        "discovered": {
+          "viewed_logs": [
+            "unit-tests"
+          ],
+          "viewed_files": [],
+          "viewed_commits": false,
+          "viewed_dependency_graph": false,
+          "marked_impacted": [],
+          "submitted_causal_change": null,
+          "submitted_blast_radius": null,
+          "security_checked": false
+        },
+        "validations": {
+          "unit:auth-service": "passed"
+        },
+        "release_decision": {
+          "decision": "ship",
+          "reason": "Local CI is passing after the patch.",
+          "owner_to_notify": "mobile-platform"
+        },
+        "reward_total": 1.3699999999999997,
+        "reward_breakdown": {
+          "investigation": 0.1,
+          "step_cost": -0.08,
+          "repair": 0.8,
+          "ci_repair": 1.4,
+          "bad_release_decision": -1.2,
+          "owner_escalation": 0.35
+        },
+        "action_trace": [
+          {
+            "step": 1,
+            "action": {
+              "action_type": "view_log",
+              "params": {
+                "job_name": "unit-tests"
+              }
+            },
+            "result": {
+              "action_type": "view_log",
+              "ok": true,
+              "job_name": "unit-tests",
+              "log": "ImportError while importing test module tests/test_retry.py\nfrom app.retry import policy\napp/retry.py:1: in <module>\n    from authsdk.helpers import build_retry_policy\nE   ImportError: cannot import name 'build_retry_policy' from 'authsdk.helpers'\n"
+            },
+            "reward_delta": 0.08
+          },
+          {
+            "step": 2,
+            "action": {
+              "action_type": "replace",
+              "params": {
+                "file_path": "app/retry.py",
+                "search": "build_retry_policy",
+                "replace": "create_retry_policy"
+              }
+            },
+            "result": {
+              "action_type": "replace",
+              "ok": true,
+              "file_path": "app/retry.py",
+              "diff": "--- a/app/retry.py\n+++ b/app/retry.py\n@@ -1,3 +1,3 @@\n-from authsdk.helpers import build_retry_policy\n+from authsdk.helpers import create_retry_policy\n \n-policy = build_retry_policy(max_attempts=3)\n+policy = create_retry_policy(max_attempts=3)"
+            },
+            "reward_delta": 0.78
+          },
+          {
+            "step": 3,
+            "action": {
+              "action_type": "run_unit_tests",
+              "params": {
+                "service": "auth-service"
+              }
+            },
+            "result": {
+              "action_type": "run_unit_tests",
+              "ok": true,
+              "service": "auth-service",
+              "status": "passed",
+              "summary": "12 passed"
+            },
+            "reward_delta": 1.38
+          },
+          {
+            "step": 4,
+            "action": {
+              "action_type": "submit_release_decision",
+              "params": {
+                "decision": "ship",
+                "reason": "Local CI is passing after the patch.",
+                "owner_to_notify": "mobile-platform"
+              }
+            },
+            "result": {
+              "action_type": "submit_release_decision",
+              "ok": true,
+              "correct_decision": "block",
+              "submitted": {
+                "decision": "ship",
+                "reason": "Local CI is passing after the patch.",
+                "owner_to_notify": "mobile-platform"
+              },
+              "episode_complete": true
+            },
+            "reward_delta": -0.87
+          }
+        ]
+      }
+    },
+    {
+      "task_id": "payment_schema_checkout_break",
+      "category": "schema_change",
+      "initial_observation": {
+        "episode_id": "3369f853",
+        "task_id": "payment_schema_checkout_break",
+        "step": 0,
+        "done": false,
+        "message": "Episode started. Pipeline is red. Diagnose, repair, compute blast radius, validate, and decide release.",
+        "visible_state": {
+          "service": "payment-service",
+          "pipeline_status": "failed",
+          "failed_job": "integration-tests",
+          "changed_files": [],
+          "current_diff": "",
+          "discovered": {
+            "viewed_logs": [],
+            "viewed_files": [],
+            "viewed_commits": false,
+            "viewed_dependency_graph": false,
+            "marked_impacted": [],
+            "submitted_causal_change": null,
+            "submitted_blast_radius": null,
+            "security_checked": false
+          },
+          "validations": {},
+          "release_decision": null,
+          "steps_remaining": 18
+        },
+        "last_action_result": {
+          "service": "payment-service",
+          "problem": "payment-service tests fail after schema rename. Local fix can pass, but checkout-service still expects old field.",
+          "pipeline_status": "failed",
+          "failed_job": "integration-tests",
+          "log_excerpt": [
+            "AssertionError: expected field 'payment_status', got 'status'",
+            "FAILED tests/test_payment_response.py::test_payment_response_contract"
+          ]
+        },
+        "reward": 0.0,
+        "reward_breakdown": {},
+        "available_actions": [
+          "view_log",
+          "view_commit_history",
+          "view_diff",
+          "cat",
+          "view_migration_guide",
+          "view_security_advisory",
+          "replace",
+          "run_unit_tests",
+          "view_dependency_graph",
+          "mark_impacted_service",
+          "run_contract_tests",
+          "view_ownership_map",
+          "submit_causal_change",
+          "submit_blast_radius",
+          "submit_release_decision",
+          "view_reward"
+        ]
+      },
+      "steps": [
+        {
+          "step": 1,
+          "action": {
+            "action": "view_log",
+            "job_name": "integration-tests"
+          },
+          "reward": 0.08,
+          "total_reward": 0.08,
+          "done": false,
+          "observation": {
+            "episode_id": "3369f853",
+            "task_id": "payment_schema_checkout_break",
+            "step": 1,
+            "done": false,
+            "message": "Action executed.",
+            "visible_state": {
+              "service": "payment-service",
+              "pipeline_status": "failed",
+              "failed_job": "integration-tests",
+              "changed_files": [],
+              "current_diff": "",
+              "discovered": {
+                "viewed_logs": [
+                  "integration-tests"
+                ],
+                "viewed_files": [],
+                "viewed_commits": false,
+                "viewed_dependency_graph": false,
+                "marked_impacted": [],
+                "submitted_causal_change": null,
+                "submitted_blast_radius": null,
+                "security_checked": false
+              },
+              "validations": {},
+              "release_decision": null,
+              "steps_remaining": 17
+            },
+            "last_action_result": {
+              "action_type": "view_log",
+              "ok": true,
+              "job_name": "integration-tests",
+              "log": "AssertionError: expected field 'payment_status', got 'status'\nFAILED tests/test_payment_response.py::test_payment_response_contract\n"
+            },
+            "reward": 0.08,
+            "reward_breakdown": {
+              "investigation": 0.1,
+              "step_cost": -0.02
+            },
+            "available_actions": [
+              "view_log",
+              "view_commit_history",
+              "view_diff",
+              "cat",
+              "view_migration_guide",
+              "view_security_advisory",
+              "replace",
+              "run_unit_tests",
+              "view_dependency_graph",
+              "mark_impacted_service",
+              "run_contract_tests",
+              "view_ownership_map",
+              "submit_causal_change",
+              "submit_blast_radius",
+              "submit_release_decision",
+              "view_reward"
+            ]
+          },
+          "info": {}
+        },
+        {
+          "step": 2,
+          "action": {
+            "action": "replace",
+            "file_path": "app/payment_response.py",
+            "search": "return {'status': p.status, 'id': p.id}",
+            "replace": "return {'status': p.status, 'payment_status': p.status, 'id': p.id}"
+          },
+          "reward": 0.78,
+          "total_reward": 0.86,
+          "done": false,
+          "observation": {
+            "episode_id": "3369f853",
+            "task_id": "payment_schema_checkout_break",
+            "step": 2,
+            "done": false,
+            "message": "Action executed.",
+            "visible_state": {
+              "service": "payment-service",
+              "pipeline_status": "failed",
+              "failed_job": "integration-tests",
+              "changed_files": [
+                "app/payment_response.py"
+              ],
+              "current_diff": "--- a/app/payment_response.py\n+++ b/app/payment_response.py\n@@ -1,2 +1,2 @@\n def serialize_payment(p):\n-    return {'status': p.status, 'id': p.id}\n+    return {'status': p.status, 'payment_status': p.status, 'id': p.id}",
+              "discovered": {
+                "viewed_logs": [
+                  "integration-tests"
+                ],
+                "viewed_files": [],
+                "viewed_commits": false,
+                "viewed_dependency_graph": false,
+                "marked_impacted": [],
+                "submitted_causal_change": null,
+                "submitted_blast_radius": null,
+                "security_checked": false
+              },
+              "validations": {},
+              "release_decision": null,
+              "steps_remaining": 16
+            },
+            "last_action_result": {
+              "action_type": "replace",
+              "ok": true,
+              "file_path": "app/payment_response.py",
+              "diff": "--- a/app/payment_response.py\n+++ b/app/payment_response.py\n@@ -1,2 +1,2 @@\n def serialize_payment(p):\n-    return {'status': p.status, 'id': p.id}\n+    return {'status': p.status, 'payment_status': p.status, 'id': p.id}"
+            },
+            "reward": 0.78,
+            "reward_breakdown": {
+              "investigation": 0.1,
+              "step_cost": -0.04,
+              "repair": 0.8
+            },
+            "available_actions": [
+              "view_log",
+              "view_commit_history",
+              "view_diff",
+              "cat",
+              "view_migration_guide",
+              "view_security_advisory",
+              "replace",
+              "run_unit_tests",
+              "view_dependency_graph",
+              "mark_impacted_service",
+              "run_contract_tests",
+              "view_ownership_map",
+              "submit_causal_change",
+              "submit_blast_radius",
+              "submit_release_decision",
+              "view_reward"
+            ]
+          },
+          "info": {}
+        },
+        {
+          "step": 3,
+          "action": {
+            "action": "run_unit_tests",
+            "service": "payment-service"
+          },
+          "reward": 1.38,
+          "total_reward": 2.2399999999999998,
+          "done": false,
+          "observation": {
+            "episode_id": "3369f853",
+            "task_id": "payment_schema_checkout_break",
+            "step": 3,
+            "done": false,
+            "message": "Action executed.",
+            "visible_state": {
+              "service": "payment-service",
+              "pipeline_status": "passed",
+              "failed_job": "integration-tests",
+              "changed_files": [
+                "app/payment_response.py"
+              ],
+              "current_diff": "--- a/app/payment_response.py\n+++ b/app/payment_response.py\n@@ -1,2 +1,2 @@\n def serialize_payment(p):\n-    return {'status': p.status, 'id': p.id}\n+    return {'status': p.status, 'payment_status': p.status, 'id': p.id}",
+              "discovered": {
+                "viewed_logs": [
+                  "integration-tests"
+                ],
+                "viewed_files": [],
+                "viewed_commits": false,
+                "viewed_dependency_graph": false,
+                "marked_impacted": [],
+                "submitted_causal_change": null,
+                "submitted_blast_radius": null,
+                "security_checked": false
+              },
+              "validations": {
+                "unit:payment-service": "passed"
+              },
+              "release_decision": null,
+              "steps_remaining": 15
+            },
+            "last_action_result": {
+              "action_type": "run_unit_tests",
+              "ok": true,
+              "service": "payment-service",
+              "status": "passed",
+              "summary": "12 passed"
+            },
+            "reward": 1.38,
+            "reward_breakdown": {
+              "investigation": 0.1,
+              "step_cost": -0.06,
+              "repair": 0.8,
+              "ci_repair": 1.4
+            },
+            "available_actions": [
+              "view_log",
+              "view_commit_history",
+              "view_diff",
+              "cat",
+              "view_migration_guide",
+              "view_security_advisory",
+              "replace",
+              "run_unit_tests",
+              "view_dependency_graph",
+              "mark_impacted_service",
+              "run_contract_tests",
+              "view_ownership_map",
+              "submit_causal_change",
+              "submit_blast_radius",
+              "submit_release_decision",
+              "view_reward"
+            ]
+          },
+          "info": {}
+        },
+        {
+          "step": 4,
+          "action": {
+            "action": "submit_release_decision",
+            "decision": "ship",
+            "reason": "Local CI is passing after the patch.",
+            "owner_to_notify": "checkout-platform"
+          },
+          "reward": 1.93,
+          "total_reward": 4.17,
+          "done": true,
+          "observation": {
+            "episode_id": "3369f853",
+            "task_id": "payment_schema_checkout_break",
+            "step": 4,
+            "done": true,
+            "message": "Action executed.",
+            "visible_state": {
+              "service": "payment-service",
+              "pipeline_status": "passed",
+              "failed_job": "integration-tests",
+              "changed_files": [
+                "app/payment_response.py"
+              ],
+              "current_diff": "--- a/app/payment_response.py\n+++ b/app/payment_response.py\n@@ -1,2 +1,2 @@\n def serialize_payment(p):\n-    return {'status': p.status, 'id': p.id}\n+    return {'status': p.status, 'payment_status': p.status, 'id': p.id}",
+              "discovered": {
+                "viewed_logs": [
+                  "integration-tests"
+                ],
+                "viewed_files": [],
+                "viewed_commits": false,
+                "viewed_dependency_graph": false,
+                "marked_impacted": [],
+                "submitted_causal_change": null,
+                "submitted_blast_radius": null,
+                "security_checked": false
+              },
+              "validations": {
+                "unit:payment-service": "passed"
+              },
+              "release_decision": {
+                "decision": "ship",
+                "reason": "Local CI is passing after the patch.",
+                "owner_to_notify": "checkout-platform"
+              },
+              "steps_remaining": 14
+            },
+            "last_action_result": {
+              "action_type": "submit_release_decision",
+              "ok": true,
+              "correct_decision": "ship",
+              "submitted": {
+                "decision": "ship",
+                "reason": "Local CI is passing after the patch.",
+                "owner_to_notify": "checkout-platform"
+              },
+              "episode_complete": true
+            },
+            "reward": 1.93,
+            "reward_breakdown": {
+              "investigation": 0.1,
+              "step_cost": -0.08,
+              "repair": 0.8,
+              "ci_repair": 1.4,
+              "release_decision": 1.6,
+              "owner_escalation": 0.35
+            },
+            "available_actions": [
+              "view_log",
+              "view_commit_history",
+              "view_diff",
+              "cat",
+              "view_migration_guide",
+              "view_security_advisory",
+              "replace",
+              "run_unit_tests",
+              "view_dependency_graph",
+              "mark_impacted_service",
+              "run_contract_tests",
+              "view_ownership_map",
+              "submit_causal_change",
+              "submit_blast_radius",
+              "submit_release_decision",
+              "view_reward"
+            ]
+          },
+          "info": {}
+        }
+      ],
+      "total_reward": 4.17,
+      "done": true,
+      "final_state": {
+        "episode_id": "3369f853",
+        "task_id": "payment_schema_checkout_break",
+        "step": 4,
+        "max_steps": 18,
+        "done": true,
+        "pipeline_status": "passed",
+        "changed_files": [
+          "app/payment_response.py"
+        ],
+        "current_diff": "--- a/app/payment_response.py\n+++ b/app/payment_response.py\n@@ -1,2 +1,2 @@\n def serialize_payment(p):\n-    return {'status': p.status, 'id': p.id}\n+    return {'status': p.status, 'payment_status': p.status, 'id': p.id}",
+        "discovered": {
+          "viewed_logs": [
+            "integration-tests"
+          ],
+          "viewed_files": [],
+          "viewed_commits": false,
+          "viewed_dependency_graph": false,
+          "marked_impacted": [],
+          "submitted_causal_change": null,
+          "submitted_blast_radius": null,
+          "security_checked": false
+        },
+        "validations": {
+          "unit:payment-service": "passed"
+        },
+        "release_decision": {
+          "decision": "ship",
+          "reason": "Local CI is passing after the patch.",
+          "owner_to_notify": "checkout-platform"
+        },
+        "reward_total": 4.17,
+        "reward_breakdown": {
+          "investigation": 0.1,
+          "step_cost": -0.08,
+          "repair": 0.8,
+          "ci_repair": 1.4,
+          "release_decision": 1.6,
+          "owner_escalation": 0.35
+        },
+        "action_trace": [
+          {
+            "step": 1,
+            "action": {
+              "action_type": "view_log",
+              "params": {
+                "job_name": "integration-tests"
+              }
+            },
+            "result": {
+              "action_type": "view_log",
+              "ok": true,
+              "job_name": "integration-tests",
+              "log": "AssertionError: expected field 'payment_status', got 'status'\nFAILED tests/test_payment_response.py::test_payment_response_contract\n"
+            },
+            "reward_delta": 0.08
+          },
+          {
+            "step": 2,
+            "action": {
+              "action_type": "replace",
+              "params": {
+                "file_path": "app/payment_response.py",
+                "search": "return {'status': p.status, 'id': p.id}",
+                "replace": "return {'status': p.status, 'payment_status': p.status, 'id': p.id}"
+              }
+            },
+            "result": {
+              "action_type": "replace",
+              "ok": true,
+              "file_path": "app/payment_response.py",
+              "diff": "--- a/app/payment_response.py\n+++ b/app/payment_response.py\n@@ -1,2 +1,2 @@\n def serialize_payment(p):\n-    return {'status': p.status, 'id': p.id}\n+    return {'status': p.status, 'payment_status': p.status, 'id': p.id}"
+            },
+            "reward_delta": 0.78
+          },
+          {
+            "step": 3,
+            "action": {
+              "action_type": "run_unit_tests",
+              "params": {
+                "service": "payment-service"
+              }
+            },
+            "result": {
+              "action_type": "run_unit_tests",
+              "ok": true,
+              "service": "payment-service",
+              "status": "passed",
+              "summary": "12 passed"
+            },
+            "reward_delta": 1.38
+          },
+          {
+            "step": 4,
+            "action": {
+              "action_type": "submit_release_decision",
+              "params": {
+                "decision": "ship",
+                "reason": "Local CI is passing after the patch.",
+                "owner_to_notify": "checkout-platform"
+              }
+            },
+            "result": {
+              "action_type": "submit_release_decision",
+              "ok": true,
+              "correct_decision": "ship",
+              "submitted": {
+                "decision": "ship",
+                "reason": "Local CI is passing after the patch.",
+                "owner_to_notify": "checkout-platform"
+              },
+              "episode_complete": true
+            },
+            "reward_delta": 1.93
+          }
+        ]
+      }
+    }
+  ]
+}

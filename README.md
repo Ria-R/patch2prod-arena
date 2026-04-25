@@ -1,28 +1,28 @@
 # Patch2Prod Arena
 
-**Training LLM agents to decide whether a code change is safe to ship.**
+Patch2Prod Arena is an OpenEnv-style environment for training agents to answer the harder production question after CI goes green:
 
-Most coding agents stop when CI turns green. Patch2Prod Arena starts there, but asks the harder production question:
+> Should this change actually ship?
 
-> The build is green. Should we ship it?
+The agent is not only rewarded for repairing the immediate failure, but also for diagnosing the causal change, reasoning about downstream blast radius, validating impacted services, and making a safe release decision.
 
-Patch2Prod Arena is an OpenEnv-style environment where an agent must:
+**Deliverables**
+- Hugging Face Space: https://huggingface.co/spaces/madhuria/patch2prod-arena
+- Training script: [training/train_sft.py](training/train_sft.py) and [training/train_grpo.py](training/train_grpo.py)
+- Evaluation script: [training/evaluate.py](training/evaluate.py)
+- OpenEnv config: [openenv.yaml](openenv.yaml)
+- Writeup / blog / video / slides: `ADD_LINK_HERE`
+- Training notebook / Colab: `ADD_LINK_HERE`
 
-1. Diagnose a failing CI pipeline
-2. Identify the causal change
-3. Apply a minimal patch
-4. Compute downstream blast radius
-5. Run targeted validations
-6. Make a release decision: `ship`, `block`, `canary`, `rollback`, or `request_owner_approval`
+**What The Agent Must Do**
+1. Diagnose a failing CI pipeline.
+2. Identify the causal change.
+3. Apply a minimal patch.
+4. Compute downstream blast radius.
+5. Run targeted validations.
+6. Make a release decision: `ship`, `block`, `canary`, `rollback`, or `request_owner_approval`.
 
-## Why this is not just CI repair
-
-A naive agent can fix the local unit test and say `ship`. In the main demo task, that is wrong: a downstream `mobile-gateway` contract still fails. The high-reward behavior is to fix CI, inspect the dependency graph, run contract tests for impacted services, detect the downstream break, block global release, and notify the right owner.
-
-## Environment API
-
-The environment exposes the OpenEnv-style loop:
-
+**Environment API**
 - `POST /reset`
 - `POST /step`
 - `GET /state`
@@ -36,8 +36,7 @@ Each action is one JSON object:
 }
 ```
 
-## Available actions
-
+**Available Actions**
 - `view_log(job_name)`
 - `view_commit_history()`
 - `view_diff(commit_id)`
@@ -55,22 +54,43 @@ Each action is one JSON object:
 - `submit_release_decision(decision, reason, owner_to_notify)`
 - `view_reward()`
 
-## Reward model
+**Reward Design**
 
-The reward is compositional, not a single pass/fail score:
+The reward is compositional rather than a single pass/fail score. It currently includes independent checks for:
 
-| Component | What it teaches |
-|---|---|
-| CI repair | Fix the immediate failing pipeline |
-| Causal diagnosis | Identify the commit/change that caused failure |
-| Minimal patch | Avoid broad/unrelated edits |
-| Blast radius | Identify impacted downstream systems |
-| Targeted validation | Run useful downstream checks without running everything blindly |
-| Release decision | Ship/block/canary/rollback correctly |
-| Owner escalation | Notify the right service owner |
-| Safety penalties | Penalize bad or unsupported decisions |
+- CI repair
+- Causal diagnosis
+- Minimal repair quality
+- Blast-radius reasoning
+- Targeted downstream validation
+- Release decision correctness
+- Owner escalation
+- Safety penalties for bad actions or unsupported behavior
 
-## Quickstart without Docker
+The environment also applies a per-step cost and a timeout penalty when the episode reaches max steps without finishing.
+
+**Key Plots**
+
+Reward curve:
+
+![Reward Curve](artifacts/plots/reward_curve.png)
+
+Loss curve:
+
+`ADD_LOSS_CURVE_IMAGE_HERE`
+
+**Repo Structure**
+- [patch2prod/env.py](patch2prod/env.py): core environment and reward logic
+- [patch2prod/server.py](patch2prod/server.py): FastAPI server for OpenEnv-style interaction
+- [patch2prod/tasks.py](patch2prod/tasks.py): benchmark tasks
+- [training/train_sft.py](training/train_sft.py): supervised fine-tuning starter
+- [training/train_grpo.py](training/train_grpo.py): GRPO / RL training starter
+- [training/evaluate.py](training/evaluate.py): scripted evaluation and trace generation
+- [inference.py](inference.py): root-level inference script
+
+**Run Locally**
+
+Without Docker:
 
 ```bash
 python -m venv .venv
@@ -80,71 +100,74 @@ patch2prod-demo
 ```
 
 This produces:
-
 - `artifacts/demo_results.json`
 - `artifacts/plots/reward_curve.png`
 
-## Docker quickstart
+Run the server locally:
+
+```bash
+uvicorn patch2prod.server:app --host 0.0.0.0 --port 8000
+```
+
+Docker:
 
 ```bash
 docker build -t patch2prod-arena .
 docker run --rm -p 8000:8000 patch2prod-arena
 ```
 
-In another terminal:
-
-```bash
-python scripts/http_smoke_test.py
-```
-
-Or with compose:
+Or:
 
 ```bash
 docker compose up --build
 ```
 
-## Demo story
+**Training**
 
-### Baseline agent
+SFT:
 
-The baseline fixes the local import error, runs unit tests, sees green CI, and ships.
+```bash
+python training/train_sft.py \
+  --model Qwen/Qwen2.5-0.5B-Instruct \
+  --train data/sft_traces.jsonl \
+  --out outputs/sft_patch2prod
+```
 
-Result:
+GRPO:
 
-- Local CI: passed
-- Mobile contract: not checked
-- Release decision: incorrect `ship`
-- Reward: low
+```bash
+python training/train_grpo.py \
+  --model outputs/sft_patch2prod \
+  --train data/train_tasks.jsonl \
+  --out outputs/grpo_patch2prod
+```
 
-### Risk-aware agent
+Evaluation:
 
-The improved agent fixes CI, identifies `authsdk` upgrade as causal, checks the dependency graph, marks impacted services, runs mobile contract tests, detects a downstream failure, blocks release, and notifies `mobile-platform`.
+```bash
+python training/evaluate.py \
+  --policy baseline \
+  --tasks data/eval_tasks.jsonl \
+  --out artifacts/traces/baseline_trace.json
 
-Result:
+python training/evaluate.py \
+  --policy improved \
+  --tasks data/eval_tasks.jsonl \
+  --out artifacts/traces/improved_trace.json
+```
 
-- Local CI: passed
-- Blast radius: correct
-- Mobile contract: failed
-- Release decision: correct `block`
-- Reward: high
+**Baseline Vs Improved**
 
-## Post-training / self-improvement strategy
+Baseline policy behavior:
+- Fixes the local failure.
+- Runs unit tests.
+- Ships too early.
 
-Phase 1: Use scripted traces as a baseline and formatting warmup.
+Improved policy behavior:
+- Diagnoses the causal change.
+- Repairs the local issue.
+- Checks downstream impact.
+- Runs targeted validations.
+- Makes a safer release decision.
 
-Phase 2: Sample JSON action sequences from a small instruct model.
-
-Phase 3: Score each sequence through the environment using the reward breakdown.
-
-Phase 4: Use GRPO/RLVR through TRL/Unsloth so higher-reward action sequences become more likely.
-
-Phase 5: Add curriculum:
-
-- Easy: fix local CI only
-- Medium: fix CI + identify causal commit
-- Hard: fix CI + blast radius + release decision
-- Adversarial: green CI but unsafe downstream contract/security state
-
-## Suggested blog/video title
-
-**The Build Is Green. Should the Agent Ship It?**
+This project is built to show that green CI is not enough when downstream contracts, release safety, and owner coordination still matter.

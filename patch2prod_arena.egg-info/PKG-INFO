@@ -2,7 +2,7 @@ Metadata-Version: 2.4
 Name: patch2prod-arena
 Version: 0.1.0
 Summary: OpenEnv-style environment for CI repair, blast radius analysis, and release decisions
-Requires-Python: <3.12,>=3.10
+Requires-Python: <3.13,>=3.10
 Requires-Dist: fastapi>=0.111.0
 Requires-Dist: uvicorn[standard]>=0.30.0
 Requires-Dist: pydantic>=2.7.0

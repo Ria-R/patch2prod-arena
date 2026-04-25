@@ -16,7 +16,8 @@ python training/evaluate_sft_policy.py \
   --model outputs/sft_patch2prod_lora \
   --tasks data/eval_tasks.jsonl \
   --out artifacts/traces/sft_trace.json \
-  --max_steps 18
+  --max_steps 24 \
+  --max_new_tokens 192
 """
 
 from __future__ import annotations
@@ -335,7 +336,7 @@ def load_model(model_path: str, base_model: str | None = None):
     return model, tokenizer
 
 
-def generate_action(model, tokenizer, prompt: str, max_new_tokens: int = 140) -> Tuple[str, bool, str, Dict[str, Any] | None]:
+def generate_action(model, tokenizer, prompt: str, max_new_tokens: int = 192) -> Tuple[str, bool, str, Dict[str, Any] | None]:
     inputs = tokenizer(prompt.strip() + "\n", return_tensors="pt").to(model.device)
 
     with torch.no_grad():
@@ -766,7 +767,13 @@ def compute_metrics(results: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
-def run_task(model, tokenizer, task: Dict[str, Any], max_steps: int):
+def run_task(
+    model,
+    tokenizer,
+    task: Dict[str, Any],
+    max_steps: int,
+    max_new_tokens: int = 192,
+):
     env = Patch2ProdEnv()
     obs = safe_reset(env, task["task_id"])
 
@@ -776,7 +783,9 @@ def run_task(model, tokenizer, task: Dict[str, Any], max_steps: int):
 
     for step_idx in range(1, max_steps + 1):
         prompt = build_prompt_from_obs(task, to_jsonable(obs), step_idx)
-        raw, ok, msg, action_obj = generate_action(model, tokenizer, prompt)
+        raw, ok, msg, action_obj = generate_action(
+            model, tokenizer, prompt, max_new_tokens=max_new_tokens
+        )
 
         raw_action_obj = action_obj
 
@@ -908,7 +917,13 @@ def main():
     parser.add_argument("--base_model", default=None, help="Base model if --model is a LoRA adapter")
     parser.add_argument("--tasks", default="data/eval_tasks.jsonl")
     parser.add_argument("--out", default="artifacts/traces/sft_trace.json")
-    parser.add_argument("--max_steps", type=int, default=18)
+    parser.add_argument("--max_steps", type=int, default=24)
+    parser.add_argument(
+        "--max_new_tokens",
+        type=int,
+        default=192,
+        help="Per-step generation cap; raise if long replace() JSON truncates.",
+    )
     args = parser.parse_args()
 
     tasks = load_jsonl(args.tasks)
@@ -918,7 +933,13 @@ def main():
     results = []
     for task in tasks:
         print(f"Evaluating task: {task['task_id']}")
-        result = run_task(model, tokenizer, task, max_steps=args.max_steps)
+        result = run_task(
+            model,
+            tokenizer,
+            task,
+            max_steps=args.max_steps,
+            max_new_tokens=args.max_new_tokens,
+        )
         results.append(result)
         print(f"  reward={result['total_reward']} done={result['done']}")
 

@@ -107,14 +107,18 @@ python training/train_grpo.py \
   --base_model Qwen/Qwen2.5-0.5B-Instruct \
   --train data/grpo_train_states.jsonl \
   --out outputs/grpo_patch2prod_lora \
-  --epochs 1
+  --epochs 1 \
+  --max_completion_length 384 \
+  --num_generations 4 \
+  --temperature 0.85
 
 python training/evaluate_sft_policy.py \
   --model outputs/grpo_patch2prod_lora \
   --base_model Qwen/Qwen2.5-0.5B-Instruct \
   --tasks data/eval_tasks.jsonl \
   --out artifacts/traces/grpo_trace.json \
-  --max_steps 18
+  --max_steps 24 \
+  --max_new_tokens 192
 
 python training/generate_plots.py || true
 

@@ -24,6 +24,7 @@ AVAILABLE_ACTIONS = {
     "view_log",
     "view_commit_history",
     "view_diff",
+    "grep",
     "cat",
     "view_migration_guide",
     "view_security_advisory",
@@ -42,6 +43,7 @@ AVAILABLE_ACTIONS = {
 REQUIRED_PARAMS = {
     "view_log": ["job_name"],
     "view_diff": ["commit_id"],
+    "grep": ["pattern", "path"],
     "cat": ["file_path"],
     "replace": ["file_path", "search", "replace"],
     "run_unit_tests": ["service"],
@@ -186,8 +188,11 @@ def process_reward(pred: Dict[str, Any], prompt: str) -> float:
     if "viewed_commits\": false" in prompt_lower and action_type == "view_diff":
         reward -= 1.0
 
-    # Known task-specific constraints.
-    if "authsdk_mobile_contract_break" in prompt:
+    # Known task-specific constraints (match canonical + legacy prompt IDs).
+    auth_ctx = "authsdk_mobile_contract_break" in prompt or "authsdk_mobile_break_001" in prompt
+    pay_ctx = "payment_schema_checkout_break" in prompt or "payment_schema_break_001" in prompt
+
+    if auth_ctx:
         if action_type == "view_log" and params.get("job_name") == "unit-tests":
             reward += 0.5
         if action_type == "view_diff" and params.get("commit_id") == "c42":
@@ -197,7 +202,7 @@ def process_reward(pred: Dict[str, Any], prompt: str) -> float:
         if params.get("service") in {"payment-response", "payment-tester", "<your-patch-id>", "<your-service-name>"}:
             reward -= 1.0
 
-    if "payment_schema_checkout_break" in prompt:
+    if pay_ctx:
         if action_type == "view_log" and params.get("job_name") == "integration-tests":
             reward += 0.5
         if action_type == "view_diff" and params.get("commit_id") == "p17":
@@ -254,17 +259,51 @@ def make_reward_func():
     return reward_func
 
 
+_GRPO_SCHEMA_HINT = (
+    "\n\nOutput exactly one JSON object on one line: "
+    '{"action_type":"<string>","params":{...}} '
+    "No markdown, no code fences, no text after the closing brace."
+)
+
+
 def load_dataset(path: str) -> Dataset:
     rows = load_jsonl(path)
-    return Dataset.from_list([
-        {
-            "prompt": row["prompt"],
-            "gold_action": row["gold_action"],
-            "task_id": row.get("task_id", ""),
-            "variant": row.get("variant", ""),
-        }
-        for row in rows
-    ])
+    records: List[Dict[str, Any]] = []
+    for row in rows:
+        prompt = row["prompt"]
+        tid = (row.get("task_id") or "").strip()
+        if tid and tid not in prompt:
+            prompt = f"{prompt}\n[environment_task_id: {tid}]"
+        prompt = f"{prompt}{_GRPO_SCHEMA_HINT}"
+        records.append(
+            {
+                "prompt": prompt,
+                "gold_action": row["gold_action"],
+                "task_id": row.get("task_id", ""),
+                "variant": row.get("variant", ""),
+            }
+        )
+    return Dataset.from_list(records)
+
+
+def apply_chat_template_to_prompts(dataset: Dataset, tokenizer: Any) -> Dataset:
+    """
+    Instruct checkpoints (e.g. Qwen2.5-Instruct) expect the chat template; raw task strings
+    often produce long non-JSON continuations and max-length clips → constant -2 rewards.
+    """
+    if not getattr(tokenizer, "chat_template", None):
+        return dataset
+
+    def _one(row: Dict[str, Any]) -> Dict[str, Any]:
+        messages = [{"role": "user", "content": row["prompt"]}]
+        text = tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True,
+        )
+        return {"prompt": text}
+
+    return dataset.map(_one)
 
 
 def load_model_and_tokenizer(model_path: str, base_model: str | None):
@@ -309,11 +348,37 @@ def main():
     parser.add_argument("--train", default="data/grpo_train_states.jsonl")
     parser.add_argument("--out", default="outputs/grpo_patch2prod_lora")
     parser.add_argument("--epochs", type=float, default=1.0)
+    parser.add_argument(
+        "--max_completion_length",
+        type=int,
+        default=384,
+        help="Token budget for one JSON action; too small → clipped_ratio=1 and reward=-2.",
+    )
+    parser.add_argument(
+        "--num_generations",
+        type=int,
+        default=4,
+        help="GRPO needs per-prompt variance; use >=2 and prefer 4+ if batch size allows.",
+    )
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=0.8,
+        help=">0 yields diverse completions so rewards are not identical every time.",
+    )
+    parser.add_argument(
+        "--no_chat_template",
+        action="store_true",
+        help="Disable apply_chat_template wrapping (not recommended for Instruct models).",
+    )
     args = parser.parse_args()
 
     dataset = load_dataset(args.train)
     model, tokenizer = load_model_and_tokenizer(args.model, args.base_model)
+    if not args.no_chat_template:
+        dataset = apply_chat_template_to_prompts(dataset, tokenizer)
 
+    grpo_sig = inspect.signature(GRPOConfig.__init__).parameters
     # TRL: `max_prompt_length` existed on older GRPOConfig; recent releases dropped it
     # (prompt length follows model max / tokenizer; use dataset truncation if needed).
     grpo_kwargs: Dict[str, Any] = {
@@ -325,12 +390,22 @@ def main():
         "logging_steps": 1,
         "save_strategy": "epoch",
         "report_to": [],
-        "num_generations": 2,
-        "max_completion_length": 128,
+        "num_generations": args.num_generations,
+        "max_completion_length": args.max_completion_length,
         "remove_unused_columns": False,
     }
-    if "max_prompt_length" in inspect.signature(GRPOConfig.__init__).parameters:
+    if "max_prompt_length" in grpo_sig:
         grpo_kwargs["max_prompt_length"] = 1536
+    if "temperature" in grpo_sig:
+        grpo_kwargs["temperature"] = args.temperature
+
+    gen_kw: Dict[str, Any] = {}
+    if tokenizer.eos_token_id is not None:
+        gen_kw["eos_token_id"] = tokenizer.eos_token_id
+    if tokenizer.pad_token_id is not None:
+        gen_kw["pad_token_id"] = tokenizer.pad_token_id
+    if gen_kw and "generation_kwargs" in grpo_sig:
+        grpo_kwargs["generation_kwargs"] = gen_kw
 
     config = GRPOConfig(**grpo_kwargs)
 

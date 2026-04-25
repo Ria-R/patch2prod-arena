@@ -1,0 +1,3 @@
+[console_scripts]
+patch2prod-demo = patch2prod.cli_demo:main
+patch2prod-server = patch2prod.server:main

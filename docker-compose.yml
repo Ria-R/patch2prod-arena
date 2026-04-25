@@ -1,0 +1,7 @@
+services:
+  patch2prod:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - PATCH2PROD_DEFAULT_TASK=authsdk_mobile_contract_break

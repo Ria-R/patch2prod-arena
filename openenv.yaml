@@ -1,0 +1,17 @@
+name: patch2prod-arena
+version: 0.1.0
+description: "Patch2Prod Arena: CI repair + blast-radius + release decision environment"
+entrypoint: "patch2prod.server:app"
+api:
+  reset: /reset
+  step: /step
+  state: /state
+runtime:
+  dockerfile: Dockerfile
+  port: 8000
+tags:
+  - openenv
+  - ci-cd
+  - release-engineering
+  - blast-radius
+  - rlvr

@@ -1,0 +1,10 @@
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.7.0
+matplotlib>=3.8.0
+requests>=2.31.0
+# Optional for real RL fine-tuning later, not needed for the first Docker demo:
+# transformers
+# trl
+# unsloth
+# datasets

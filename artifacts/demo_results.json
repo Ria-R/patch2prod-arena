@@ -1,0 +1,539 @@
+{
+  "baseline": {
+    "episode_id": "0ca46765",
+    "task_id": "authsdk_mobile_contract_break",
+    "step": 5,
+    "max_steps": 18,
+    "done": true,
+    "pipeline_status": "passed",
+    "changed_files": [
+      "app/retry.py"
+    ],
+    "current_diff": "--- a/app/retry.py\n+++ b/app/retry.py\n@@ -1,3 +1,3 @@\n-from authsdk.helpers import build_retry_policy\n+from authsdk.helpers import create_retry_policy\n \n-policy = build_retry_policy(max_attempts=3)\n+policy = create_retry_policy(max_attempts=3)",
+    "discovered": {
+      "viewed_logs": [
+        "unit-tests"
+      ],
+      "viewed_files": [],
+      "viewed_commits": false,
+      "viewed_dependency_graph": false,
+      "marked_impacted": [],
+      "submitted_causal_change": null,
+      "submitted_blast_radius": null,
+      "security_checked": false
+    },
+    "validations": {
+      "unit:auth-service": "passed"
+    },
+    "release_decision": {
+      "decision": "ship",
+      "reason": "auth-service unit tests are green"
+    },
+    "reward_total": 1.2,
+    "reward_breakdown": {
+      "investigation": 0.30000000000000004,
+      "step_cost": -0.1,
+      "repair": 0.8,
+      "ci_repair": 1.4,
+      "bad_release_decision": -1.2
+    },
+    "action_trace": [
+      {
+        "step": 1,
+        "action": {
+          "action_type": "view_log",
+          "params": {
+            "job_name": "unit-tests"
+          }
+        },
+        "result": {
+          "action_type": "view_log",
+          "ok": true,
+          "job_name": "unit-tests",
+          "log": "ImportError while importing test module tests/test_retry.py\nfrom app.retry import policy\napp/retry.py:1: in <module>\n    from authsdk.helpers import build_retry_policy\nE   ImportError: cannot import name 'build_retry_policy' from 'authsdk.helpers'\n"
+        },
+        "reward_delta": 0.08
+      },
+      {
+        "step": 2,
+        "action": {
+          "action_type": "view_migration_guide",
+          "params": {
+            "package": "authsdk"
+          }
+        },
+        "result": {
+          "action_type": "view_migration_guide",
+          "ok": true,
+          "migration_guide": "# docs/authsdk_migration.md\nauthsdk v2 migration: build_retry_policy was renamed to create_retry_policy. Token expiry is now serialized as ISO-8601 by default unless compatibility_mode='seconds' is set."
+        },
+        "reward_delta": 0.18
+      },
+      {
+        "step": 3,
+        "action": {
+          "action_type": "replace",
+          "params": {
+            "file_path": "app/retry.py",
+            "search": "build_retry_policy",
+            "replace": "create_retry_policy"
+          }
+        },
+        "result": {
+          "action_type": "replace",
+          "ok": true,
+          "file_path": "app/retry.py",
+          "diff": "--- a/app/retry.py\n+++ b/app/retry.py\n@@ -1,3 +1,3 @@\n-from authsdk.helpers import build_retry_policy\n+from authsdk.helpers import create_retry_policy\n \n-policy = build_retry_policy(max_attempts=3)\n+policy = create_retry_policy(max_attempts=3)"
+        },
+        "reward_delta": 0.78
+      },
+      {
+        "step": 4,
+        "action": {
+          "action_type": "run_unit_tests",
+          "params": {
+            "service": "auth-service"
+          }
+        },
+        "result": {
+          "action_type": "run_unit_tests",
+          "ok": true,
+          "service": "auth-service",
+          "status": "passed",
+          "summary": "12 passed"
+        },
+        "reward_delta": 1.38
+      },
+      {
+        "step": 5,
+        "action": {
+          "action_type": "submit_release_decision",
+          "params": {
+            "decision": "ship",
+            "reason": "auth-service unit tests are green"
+          }
+        },
+        "result": {
+          "action_type": "submit_release_decision",
+          "ok": true,
+          "correct_decision": "block",
+          "submitted": {
+            "decision": "ship",
+            "reason": "auth-service unit tests are green"
+          },
+          "episode_complete": true
+        },
+        "reward_delta": -1.22
+      }
+    ],
+    "reward_curve": [
+      0.0,
+      0.08,
+      0.26,
+      1.04,
+      2.42,
+      1.2
+    ]
+  },
+  "improved": {
+    "episode_id": "c238026a",
+    "task_id": "authsdk_mobile_contract_break",
+    "step": 16,
+    "max_steps": 18,
+    "done": true,
+    "pipeline_status": "passed",
+    "changed_files": [
+      "app/retry.py"
+    ],
+    "current_diff": "--- a/app/retry.py\n+++ b/app/retry.py\n@@ -1,3 +1,3 @@\n-from authsdk.helpers import build_retry_policy\n+from authsdk.helpers import create_retry_policy\n \n-policy = build_retry_policy(max_attempts=3)\n+policy = create_retry_policy(max_attempts=3)",
+    "discovered": {
+      "viewed_logs": [
+        "unit-tests"
+      ],
+      "viewed_files": [],
+      "viewed_commits": true,
+      "viewed_dependency_graph": true,
+      "marked_impacted": [
+        "checkout-service",
+        "mobile-gateway",
+        "fraud-service"
+      ],
+      "submitted_causal_change": {
+        "commit": "c42",
+        "summary": "authsdk upgraded from 1.8.0 to 2.0.0"
+      },
+      "submitted_blast_radius": [
+        "checkout-service",
+        "fraud-service",
+        "mobile-gateway"
+      ],
+      "security_checked": false
+    },
+    "validations": {
+      "unit:auth-service": "passed",
+      "contract:checkout-service": "passed",
+      "contract:mobile-gateway": "failed"
+    },
+    "release_decision": {
+      "decision": "block",
+      "owner_to_notify": "mobile-platform",
+      "reason": "CI is green but downstream mobile-gateway contract fails after token_expiry format change"
+    },
+    "reward_total": 8.780000000000001,
+    "reward_breakdown": {
+      "investigation": 0.30000000000000004,
+      "step_cost": -0.32,
+      "causal_diagnosis": 1.15,
+      "repair": 0.8,
+      "ci_repair": 1.4,
+      "blast_radius": 1.25,
+      "blast_radius_f1": 1.0,
+      "targeted_validation": 0.5,
+      "validation": 0.1,
+      "risk_discovery": 0.3,
+      "release_ops": 0.1,
+      "release_decision": 1.6,
+      "owner_escalation": 0.35,
+      "evidence": 0.25
+    },
+    "action_trace": [
+      {
+        "step": 1,
+        "action": {
+          "action_type": "view_log",
+          "params": {
+            "job_name": "unit-tests"
+          }
+        },
+        "result": {
+          "action_type": "view_log",
+          "ok": true,
+          "job_name": "unit-tests",
+          "log": "ImportError while importing test module tests/test_retry.py\nfrom app.retry import policy\napp/retry.py:1: in <module>\n    from authsdk.helpers import build_retry_policy\nE   ImportError: cannot import name 'build_retry_policy' from 'authsdk.helpers'\n"
+        },
+        "reward_delta": 0.08
+      },
+      {
+        "step": 2,
+        "action": {
+          "action_type": "view_commit_history",
+          "params": {}
+        },
+        "result": {
+          "action_type": "view_commit_history",
+          "ok": true,
+          "recent_changes": [
+            {
+              "commit": "c41",
+              "summary": "Refactor retry policy tests",
+              "status": "passing"
+            },
+            {
+              "commit": "c42",
+              "summary": "Upgrade authsdk from 1.8.0 to 2.0.0",
+              "status": "failing"
+            }
+          ]
+        },
+        "reward_delta": 0.13
+      },
+      {
+        "step": 3,
+        "action": {
+          "action_type": "view_diff",
+          "params": {
+            "commit_id": "c42"
+          }
+        },
+        "result": {
+          "action_type": "view_diff",
+          "ok": true,
+          "commit_id": "c42",
+          "diff_summary": "authsdk upgraded from 1.8.0 to 2.0.0"
+        },
+        "reward_delta": 0.18
+      },
+      {
+        "step": 4,
+        "action": {
+          "action_type": "submit_causal_change",
+          "params": {
+            "commit": "c42",
+            "summary": "authsdk upgraded from 1.8.0 to 2.0.0"
+          }
+        },
+        "result": {
+          "action_type": "submit_causal_change",
+          "ok": true,
+          "correct": true,
+          "expected": "c42"
+        },
+        "reward_delta": 0.78
+      },
+      {
+        "step": 5,
+        "action": {
+          "action_type": "view_migration_guide",
+          "params": {
+            "package": "authsdk"
+          }
+        },
+        "result": {
+          "action_type": "view_migration_guide",
+          "ok": true,
+          "migration_guide": "# docs/authsdk_migration.md\nauthsdk v2 migration: build_retry_policy was renamed to create_retry_policy. Token expiry is now serialized as ISO-8601 by default unless compatibility_mode='seconds' is set."
+        },
+        "reward_delta": 0.18
+      },
+      {
+        "step": 6,
+        "action": {
+          "action_type": "replace",
+          "params": {
+            "file_path": "app/retry.py",
+            "search": "build_retry_policy",
+            "replace": "create_retry_policy"
+          }
+        },
+        "result": {
+          "action_type": "replace",
+          "ok": true,
+          "file_path": "app/retry.py",
+          "diff": "--- a/app/retry.py\n+++ b/app/retry.py\n@@ -1,3 +1,3 @@\n-from authsdk.helpers import build_retry_policy\n+from authsdk.helpers import create_retry_policy\n \n-policy = build_retry_policy(max_attempts=3)\n+policy = create_retry_policy(max_attempts=3)"
+        },
+        "reward_delta": 0.78
+      },
+      {
+        "step": 7,
+        "action": {
+          "action_type": "run_unit_tests",
+          "params": {
+            "service": "auth-service"
+          }
+        },
+        "result": {
+          "action_type": "run_unit_tests",
+          "ok": true,
+          "service": "auth-service",
+          "status": "passed",
+          "summary": "12 passed"
+        },
+        "reward_delta": 1.38
+      },
+      {
+        "step": 8,
+        "action": {
+          "action_type": "view_dependency_graph",
+          "params": {
+            "service": "auth-service"
+          }
+        },
+        "result": {
+          "action_type": "view_dependency_graph",
+          "ok": true,
+          "service": "auth-service",
+          "graph": {
+            "auth-service": [
+              "checkout-service",
+              "mobile-gateway",
+              "fraud-service",
+              "notification-service"
+            ],
+            "checkout-service": [
+              "payment-service"
+            ],
+            "mobile-gateway": [],
+            "fraud-service": [],
+            "notification-service": []
+          }
+        },
+        "reward_delta": 0.18
+      },
+      {
+        "step": 9,
+        "action": {
+          "action_type": "mark_impacted_service",
+          "params": {
+            "service": "checkout-service",
+            "reason": "Consumes auth tokens during checkout"
+          }
+        },
+        "result": {
+          "action_type": "mark_impacted_service",
+          "ok": true,
+          "service": "checkout-service",
+          "reason": "Consumes auth tokens during checkout",
+          "marked_impacted": [
+            "checkout-service",
+            "mobile-gateway",
+            "fraud-service"
+          ]
+        },
+        "reward_delta": 0.33
+      },
+      {
+        "step": 10,
+        "action": {
+          "action_type": "mark_impacted_service",
+          "params": {
+            "service": "mobile-gateway",
+            "reason": "Parses token expiry format"
+          }
+        },
+        "result": {
+          "action_type": "mark_impacted_service",
+          "ok": true,
+          "service": "mobile-gateway",
+          "reason": "Parses token expiry format",
+          "marked_impacted": [
+            "checkout-service",
+            "mobile-gateway",
+            "fraud-service"
+          ]
+        },
+        "reward_delta": 0.33
+      },
+      {
+        "step": 11,
+        "action": {
+          "action_type": "mark_impacted_service",
+          "params": {
+            "service": "fraud-service",
+            "reason": "Consumes identity claims"
+          }
+        },
+        "result": {
+          "action_type": "mark_impacted_service",
+          "ok": true,
+          "service": "fraud-service",
+          "reason": "Consumes identity claims",
+          "marked_impacted": [
+            "checkout-service",
+            "mobile-gateway",
+            "fraud-service"
+          ]
+        },
+        "reward_delta": 0.33
+      },
+      {
+        "step": 12,
+        "action": {
+          "action_type": "submit_blast_radius",
+          "params": {
+            "impacted_services": [
+              "checkout-service",
+              "mobile-gateway",
+              "fraud-service"
+            ]
+          }
+        },
+        "result": {
+          "action_type": "submit_blast_radius",
+          "ok": true,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "expected": [
+            "checkout-service",
+            "fraud-service",
+            "mobile-gateway"
+          ]
+        },
+        "reward_delta": 0.98
+      },
+      {
+        "step": 13,
+        "action": {
+          "action_type": "run_contract_tests",
+          "params": {
+            "service": "checkout-service"
+          }
+        },
+        "result": {
+          "action_type": "run_contract_tests",
+          "ok": true,
+          "service": "checkout-service",
+          "contract_status": "passed"
+        },
+        "reward_delta": 0.33
+      },
+      {
+        "step": 14,
+        "action": {
+          "action_type": "run_contract_tests",
+          "params": {
+            "service": "mobile-gateway"
+          }
+        },
+        "result": {
+          "action_type": "run_contract_tests",
+          "ok": true,
+          "service": "mobile-gateway",
+          "contract_status": "failed"
+        },
+        "reward_delta": 0.53
+      },
+      {
+        "step": 15,
+        "action": {
+          "action_type": "view_ownership_map",
+          "params": {}
+        },
+        "result": {
+          "action_type": "view_ownership_map",
+          "ok": true,
+          "ownership": {
+            "auth-service": "identity-platform",
+            "checkout-service": "payments-platform",
+            "mobile-gateway": "mobile-platform",
+            "fraud-service": "risk-platform",
+            "notification-service": "comms-platform"
+          }
+        },
+        "reward_delta": 0.08
+      },
+      {
+        "step": 16,
+        "action": {
+          "action_type": "submit_release_decision",
+          "params": {
+            "decision": "block",
+            "owner_to_notify": "mobile-platform",
+            "reason": "CI is green but downstream mobile-gateway contract fails after token_expiry format change"
+          }
+        },
+        "result": {
+          "action_type": "submit_release_decision",
+          "ok": true,
+          "correct_decision": "block",
+          "submitted": {
+            "decision": "block",
+            "owner_to_notify": "mobile-platform",
+            "reason": "CI is green but downstream mobile-gateway contract fails after token_expiry format change"
+          },
+          "episode_complete": true
+        },
+        "reward_delta": 2.18
+      }
+    ],
+    "reward_curve": [
+      0.0,
+      0.08,
+      0.21000000000000002,
+      0.39,
+      1.17,
+      1.3499999999999999,
+      2.13,
+      3.51,
+      3.69,
+      4.02,
+      4.35,
+      4.68,
+      5.66,
+      5.99,
+      6.5200000000000005,
+      6.6000000000000005,
+      8.780000000000001
+    ]
+  }
+}

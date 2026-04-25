@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "patch2prod-arena"
+version = "0.1.0"
+description = "OpenEnv-style environment for CI repair, blast radius analysis, and release decisions"
+requires-python = ">=3.10,<3.12"
+dependencies = [
+  "fastapi>=0.111.0",
+  "uvicorn[standard]>=0.30.0",
+  "pydantic>=2.7.0",
+  "matplotlib>=3.8.0",
+  "requests>=2.31.0"
+]
+
+[project.scripts]
+patch2prod-server = "patch2prod.server:main"
+patch2prod-demo = "patch2prod.cli_demo:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["patch2prod*"]

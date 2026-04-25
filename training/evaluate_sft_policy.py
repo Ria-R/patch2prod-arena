@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import torch
+from huggingface_hub import hf_hub_download
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 try:
@@ -291,22 +292,32 @@ def validate_action(text: str) -> Tuple[bool, str, Dict[str, Any] | None]:
 
 
 def load_model(model_path: str, base_model: str | None = None):
-    tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+    adapter_cfg = None
+    local_cfg = Path(model_path) / "adapter_config.json"
+    if local_cfg.exists():
+        with local_cfg.open("r", encoding="utf-8") as f:
+            adapter_cfg = json.load(f)
+    else:
+        try:
+            cfg_path = hf_hub_download(repo_id=model_path, filename="adapter_config.json")
+            with open(cfg_path, "r", encoding="utf-8") as f:
+                adapter_cfg = json.load(f)
+        except Exception:
+            adapter_cfg = None
+
+    if not base_model and adapter_cfg:
+        base_model = adapter_cfg.get("base_model_name_or_path")
+
+    tokenizer_source = base_model if (adapter_cfg and base_model) else model_path
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_source, trust_remote_code=True)
 
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
     # If model_path is a LoRA adapter, load base + adapter.
-    adapter_config = Path(model_path) / "adapter_config.json"
-
-    if adapter_config.exists():
+    if adapter_cfg is not None:
         if PeftModel is None:
             raise RuntimeError("peft is required to load LoRA adapters. Install peft.")
-
-        if not base_model:
-            with adapter_config.open("r", encoding="utf-8") as f:
-                cfg = json.load(f)
-            base_model = cfg.get("base_model_name_or_path")
 
         if not base_model:
             raise ValueError("--base_model is required for LoRA adapter evaluation.")

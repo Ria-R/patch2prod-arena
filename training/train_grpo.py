@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Tuple
 
 import torch
 from datasets import Dataset
+from huggingface_hub import hf_hub_download
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from trl import GRPOConfig, GRPOTrainer
 
@@ -322,21 +323,38 @@ def apply_chat_template_to_prompts(dataset: Dataset, tokenizer: Any) -> Dataset:
     return dataset.map(_one)
 
 
+def load_adapter_config(model_path: str) -> Dict[str, Any] | None:
+    local_cfg = Path(model_path) / "adapter_config.json"
+    if local_cfg.exists():
+        with local_cfg.open("r", encoding="utf-8") as f:
+            return json.load(f)
+
+    # model_path can be a Hub repo id (e.g. madhuria/patch2prod-sft-agent)
+    try:
+        cfg_path = hf_hub_download(repo_id=model_path, filename="adapter_config.json")
+    except Exception:
+        return None
+    with open(cfg_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
 def load_model_and_tokenizer(model_path: str, base_model: str | None):
-    tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+    adapter_cfg = load_adapter_config(model_path)
+    inferred_base = adapter_cfg.get("base_model_name_or_path") if adapter_cfg else None
+    if not base_model and inferred_base:
+        base_model = inferred_base
+
+    tokenizer_source = base_model if (adapter_cfg and base_model) else model_path
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_source, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    adapter_config = Path(model_path) / "adapter_config.json"
-
-    if adapter_config.exists():
+    if adapter_cfg is not None:
         if PeftModel is None:
             raise RuntimeError("peft is required to load LoRA adapters.")
 
         if not base_model:
-            with adapter_config.open("r", encoding="utf-8") as f:
-                cfg = json.load(f)
-            base_model = cfg.get("base_model_name_or_path")
+            raise ValueError("--base_model is required for LoRA adapter training.")
 
         base = AutoModelForCausalLM.from_pretrained(
             base_model,

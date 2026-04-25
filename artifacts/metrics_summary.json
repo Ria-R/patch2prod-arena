@@ -1,0 +1,46 @@
+{
+  "runs": [
+    {
+      "label": "Baseline",
+      "trace_name": "baseline",
+      "metrics": {
+        "num_tasks": 2,
+        "avg_reward": 2.77,
+        "completion_rate": 1.0,
+        "ci_repair_success_rate": 1.0,
+        "correct_release_decision_rate": 0.5,
+        "unsafe_ship_rate": 0.5
+      }
+    },
+    {
+      "label": "Improved Reference",
+      "trace_name": "improved",
+      "metrics": {
+        "num_tasks": 2,
+        "avg_reward": 8.725,
+        "completion_rate": 1.0,
+        "ci_repair_success_rate": 1.0,
+        "correct_release_decision_rate": 1.0,
+        "unsafe_ship_rate": 0.0
+      }
+    },
+    {
+      "label": "SFT",
+      "trace_name": "sft",
+      "metrics": {
+        "num_tasks": 2,
+        "avg_reward": 4.665,
+        "completion_rate": 0.5,
+        "ci_repair_success_rate": 0.0,
+        "correct_release_decision_rate": 0.0,
+        "unsafe_ship_rate": 0.0,
+        "valid_action_rate": 0.9524
+      }
+    }
+  ],
+  "notes": [
+    "Baseline fixes local CI and tends to ship early.",
+    "Improved reference performs diagnosis, blast-radius analysis, targeted validation, and release decisioning.",
+    "SFT/GRPO rows appear automatically when sft_trace.json or grpo_trace.json are present."
+  ]
+}

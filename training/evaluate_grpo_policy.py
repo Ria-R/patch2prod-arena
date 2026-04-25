@@ -19,16 +19,19 @@ from __future__ import annotations
 import sys
 
 
-def _argv_has_policy_flag(argv: list[str]) -> bool:
-    for a in argv[1:]:
-        if a == "--policy" or a.startswith("--policy="):
-            return True
-    return False
+def _flag_present(argv: list[str], flag: str) -> bool:
+    return any(a == flag or a.startswith(f"{flag}=") for a in argv[1:])
 
 
 def main() -> None:
-    if not _argv_has_policy_flag(sys.argv):
+    # Inject GRPO-specific defaults when not already provided by the caller.
+    if not _flag_present(sys.argv, "--policy"):
         sys.argv.extend(["--policy", "grpo_lora"])
+    # Disable oracle overrides so eval reflects true model output, not hard-coded
+    # oracle actions that mask what the GRPO model actually generates.
+    if not _flag_present(sys.argv, "--no_override"):
+        sys.argv.append("--no_override")
+
     # Script lives in `training/`; that directory is on sys.path[0].
     from evaluate_sft_policy import main as eval_main
 

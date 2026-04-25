@@ -6,6 +6,7 @@ import argparse
 import inspect
 import json
 import re
+import sys
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
@@ -213,6 +214,9 @@ def process_reward(pred: Dict[str, Any], prompt: str) -> float:
     return reward
 
 
+_debug_logged: set = set()  # track which batch steps we already logged
+
+
 def make_reward_func():
     def reward_func(completions, gold_action=None, prompt=None, prompts=None, **kwargs):
         rewards = []
@@ -240,6 +244,18 @@ def make_reward_func():
             ok, pred, reason = parse_action(text)
 
             if not ok or pred is None:
+                # Log one failing sample every 50 calls so we can see what
+                # the model actually generates without flooding the output.
+                key = reason.split(":")[0]
+                if key not in _debug_logged:
+                    _debug_logged.add(key)
+                    print(
+                        f"\n[GRPO DEBUG] reason={reason!r}\n"
+                        f"  gold={gold_raw!r}\n"
+                        f"  text={text[:300]!r}\n",
+                        file=sys.stderr,
+                        flush=True,
+                    )
                 rewards.append(-2.0)
                 continue
 

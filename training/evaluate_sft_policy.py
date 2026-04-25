@@ -770,6 +770,7 @@ def run_task(
     task: Dict[str, Any],
     max_steps: int,
     max_new_tokens: int = 192,
+    use_override: bool = True,
 ):
     env = Patch2ProdEnv()
     obs = safe_reset(env, task["task_id"])
@@ -786,7 +787,7 @@ def run_task(
 
         raw_action_obj = action_obj
 
-        if action_obj is not None:
+        if use_override and action_obj is not None:
             action_obj = normalize_or_override_action(
                 action_obj=action_obj,
                 task=task,
@@ -836,10 +837,10 @@ def run_task(
 
         if done:
             break
-    if action_obj is not None:
-      action_obj = force_safe_action_if_needed(action_obj, task, to_jsonable(obs))
-      fixed_text = json.dumps(action_obj, separators=(",", ":"))
-      ok, msg, action_obj = validate_action(fixed_text)
+    if use_override and action_obj is not None:
+        action_obj = force_safe_action_if_needed(action_obj, task, to_jsonable(obs))
+        fixed_text = json.dumps(action_obj, separators=(",", ":"))
+        ok, msg, action_obj = validate_action(fixed_text)
     try:
         final_state = env.state()
     except Exception:
@@ -932,6 +933,14 @@ def main():
         default=192,
         help="Per-step generation cap; raise if long replace() JSON truncates.",
     )
+    parser.add_argument(
+        "--no_override",
+        action="store_true",
+        help=(
+            "Disable normalize_or_override_action and force_safe_action_if_needed. "
+            "Use this for GRPO eval to see true model output rather than oracle-corrected actions."
+        ),
+    )
     args = parser.parse_args()
 
     tasks = load_jsonl(args.tasks)
@@ -947,6 +956,7 @@ def main():
             task,
             max_steps=args.max_steps,
             max_new_tokens=args.max_new_tokens,
+            use_override=not args.no_override,
         )
         results.append(result)
         print(f"  reward={result['total_reward']} done={result['done']}")

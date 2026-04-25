@@ -1,17 +1,14 @@
 
 """
-Evaluate a single-step SFT policy inside Patch2ProdEnv.
+Evaluate a single-step policy inside Patch2ProdEnv.
 
-The model is expected to output ONE env-native JSON action at a time:
+Same rollout protocol for SFT and GRPO checkpoints: one JSON
+`{"action_type":...,"params":...}` per step, same env and metrics.
 
-{
-  "action_type": "view_log",
-  "params": {
-    "job_name": "unit-tests"
-  }
-}
+For GRPO-trained adapters, prefer `training/evaluate_grpo_policy.py` so trace
+metadata defaults to a GRPO label (this module remains the shared implementation).
 
-Example:
+Example (SFT):
 python training/evaluate_sft_policy.py \
   --model outputs/sft_patch2prod_lora \
   --tasks data/eval_tasks.jsonl \
@@ -912,11 +909,22 @@ def force_safe_action_if_needed(action_obj, task, obs):
     return action_obj
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--model", required=True, help="SFT model or LoRA adapter path")
+    parser = argparse.ArgumentParser(
+        description="Run a Patch2Prod policy (SFT or GRPO checkpoint) in the arena env.",
+    )
+    parser.add_argument(
+        "--model",
+        required=True,
+        help="Model dir or HF id: SFT full model, or LoRA adapter path with --base_model",
+    )
     parser.add_argument("--base_model", default=None, help="Base model if --model is a LoRA adapter")
     parser.add_argument("--tasks", default="data/eval_tasks.jsonl")
     parser.add_argument("--out", default="artifacts/traces/sft_trace.json")
+    parser.add_argument(
+        "--policy",
+        default="sft_model",
+        help="Label written to the trace JSON (e.g. sft_model, grpo_lora).",
+    )
     parser.add_argument("--max_steps", type=int, default=24)
     parser.add_argument(
         "--max_new_tokens",
@@ -944,7 +952,7 @@ def main():
         print(f"  reward={result['total_reward']} done={result['done']}")
 
     output = {
-        "policy": "sft_model",
+        "policy": args.policy,
         "model": args.model,
         "tasks_file": args.tasks,
         "metrics": compute_metrics(results),

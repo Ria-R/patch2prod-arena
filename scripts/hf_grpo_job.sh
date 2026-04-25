@@ -112,7 +112,7 @@ python training/train_grpo.py \
   --num_generations 4 \
   --temperature 0.85
 
-python training/evaluate_sft_policy.py \
+python training/evaluate_grpo_policy.py \
   --model outputs/grpo_patch2prod_lora \
   --base_model Qwen/Qwen2.5-0.5B-Instruct \
   --tasks data/eval_tasks.jsonl \

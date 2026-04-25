@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import inspect
 import json
 import re
 from pathlib import Path
@@ -303,7 +304,7 @@ def load_model_and_tokenizer(model_path: str, base_model: str | None):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", default="outputs/sft_patch2prod_lora")
+    parser.add_argument("--model", default="madhuria/patch2prod-sft-agent")
     parser.add_argument("--base_model", default="Qwen/Qwen2.5-0.5B-Instruct")
     parser.add_argument("--train", default="data/grpo_train_states.jsonl")
     parser.add_argument("--out", default="outputs/grpo_patch2prod_lora")
@@ -313,24 +314,25 @@ def main():
     dataset = load_dataset(args.train)
     model, tokenizer = load_model_and_tokenizer(args.model, args.base_model)
 
-    config = GRPOConfig(
-        output_dir=args.out,
-        num_train_epochs=args.epochs,
-        per_device_train_batch_size=2,
-        gradient_accumulation_steps=2,
-        learning_rate=5e-6,
-        logging_steps=1,
-        save_strategy="epoch",
-        report_to=[],
+    # TRL: `max_prompt_length` existed on older GRPOConfig; recent releases dropped it
+    # (prompt length follows model max / tokenizer; use dataset truncation if needed).
+    grpo_kwargs: Dict[str, Any] = {
+        "output_dir": args.out,
+        "num_train_epochs": args.epochs,
+        "per_device_train_batch_size": 2,
+        "gradient_accumulation_steps": 2,
+        "learning_rate": 5e-6,
+        "logging_steps": 1,
+        "save_strategy": "epoch",
+        "report_to": [],
+        "num_generations": 2,
+        "max_completion_length": 128,
+        "remove_unused_columns": False,
+    }
+    if "max_prompt_length" in inspect.signature(GRPOConfig.__init__).parameters:
+        grpo_kwargs["max_prompt_length"] = 1536
 
-        # GRPO generation
-        num_generations=2,
-        max_prompt_length=1536,
-        max_completion_length=128,
-
-        # Keep small for Colab
-        remove_unused_columns=False,
-    )
+    config = GRPOConfig(**grpo_kwargs)
 
     trainer = GRPOTrainer(
         model=model,

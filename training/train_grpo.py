@@ -5,7 +5,7 @@ from datasets import Dataset
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from trl import GRPOConfig, GRPOTrainer
 
-from patch2prod_arena.env import Patch2ProdEnv
+from patch2prod.env import Patch2ProdEnv
 
 
 def load_tasks(path: str) -> Dataset:

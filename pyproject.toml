@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "patch2prod-arena"
 version = "0.1.0"
 description = "OpenEnv-style environment for CI repair, blast radius analysis, and release decisions"
-requires-python = ">=3.10,<3.12"
+requires-python = ">=3.10,<3.13"
 dependencies = [
   "fastapi>=0.111.0",
   "uvicorn[standard]>=0.30.0",

@@ -1,0 +1,13 @@
+torch
+transformers
+datasets
+accelerate
+trl
+peft
+huggingface_hub
+matplotlib
+pandas
+numpy
+fastapi
+pydantic
+uvicorn

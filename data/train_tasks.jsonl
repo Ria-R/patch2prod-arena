@@ -1,0 +1,3 @@
+{"task_id":"authsdk_mobile_break_001","service":"auth-service","initial_failure":"ImportError: cannot import name 'build_retry_policy' from authsdk.helpers","category":"dependency_upgrade","correct_release_decision":"block"}
+{"task_id":"cve_downgrade_trap_001","service":"payment-service","initial_failure":"Unit tests fail after secure dependency upgrade","category":"security_patch","correct_release_decision":"ship_after_patch"}
+{"task_id":"schema_checkout_break_001","service":"orders-service","initial_failure":"Contract test failed after schema rename","category":"schema_change","correct_release_decision":"block"}

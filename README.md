@@ -199,23 +199,23 @@ Current mitigations include:
 
 Reward curve:
 
-![Reward Curve](artifacts/plots/reward_curve.png)
+![Reward Curve](https://huggingface.co/spaces/madhuria/patch2prod-arena/resolve/main/artifacts/plots/reward_curve.png)
 
 GRPO loss curve (real run):
 
-![GRPO Loss Curve](artifacts/grpo_log_analysis/loss.png)
+![GRPO Loss Curve](https://huggingface.co/spaces/madhuria/patch2prod-arena/resolve/main/artifacts/grpo_log_analysis/loss.png)
 
 GRPO reward curve (real run):
 
-![GRPO Reward Curve](artifacts/grpo_log_analysis/reward.png)
+![GRPO Reward Curve](https://huggingface.co/spaces/madhuria/patch2prod-arena/resolve/main/artifacts/grpo_log_analysis/reward.png)
 
 GRPO gradient norm:
 
-![GRPO Grad Norm](artifacts/grpo_log_analysis/grad_norm.png)
+![GRPO Grad Norm](https://huggingface.co/spaces/madhuria/patch2prod-arena/resolve/main/artifacts/grpo_log_analysis/grad_norm.png)
 
 GRPO entropy:
 
-![GRPO Entropy](artifacts/grpo_log_analysis/entropy.png)
+![GRPO Entropy](https://huggingface.co/spaces/madhuria/patch2prod-arena/resolve/main/artifacts/grpo_log_analysis/entropy.png)
 
 ## Repo Structure
 - [patch2prod/env.py](patch2prod/env.py): core environment and reward logic

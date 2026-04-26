@@ -12,11 +12,11 @@
 
 ## At-a-Glance Visuals
 
-![GRPO Reward Curve](artifacts/grpo_log_analysis/reward.png)
+![GRPO Reward Curve](https://huggingface.co/spaces/madhuria/patch2prod-arena/resolve/main/artifacts/grpo_log_analysis/reward.png)
 
-![GRPO Completion vs Terminated Length](artifacts/grpo_log_analysis/completion_length_vs_terminated.png)
+![GRPO Completion vs Terminated Length](https://huggingface.co/spaces/madhuria/patch2prod-arena/resolve/main/artifacts/grpo_log_analysis/completion_length_vs_terminated.png)
 
-![GRPO Clipped Ratio](artifacts/grpo_log_analysis/clipped_ratio.png)
+![GRPO Clipped Ratio](https://huggingface.co/spaces/madhuria/patch2prod-arena/resolve/main/artifacts/grpo_log_analysis/clipped_ratio.png)
 
 Most coding agents are optimized for a narrow loop: read the error, patch the code, rerun tests, and stop once CI turns green.  
 That loop is useful, but real releases fail for broader reasons: downstream contracts, schema compatibility, ownership boundaries, and release risk.
@@ -186,6 +186,48 @@ Train/eval protocol consistency is non-negotiable for tool-using agents.
 
 ---
 
+## Experiment Log: Failed vs Passed Attempts
+
+This project required multiple GRPO iterations before the policy produced usable rollout behavior. The most important experiments are documented below.
+
+### Failed/weak experiments
+
+- **Run pattern: `loss=0`, `grad_norm=0`, reward locked (`-2` or constant), `clipped_ratio=1`**
+  - Symptoms: completions always hit max length, no natural stop, near-zero useful update signal.
+  - Root causes:
+    - generation clipped before valid termination
+    - train/eval prompt-format mismatch
+    - reward saturation with low variance
+  - Outcome: high apparent step reward in places, but weak real rollout quality.
+
+- **Run pattern: short-term reward spikes, poor eval (`avg_reward` negative, partial completion)**
+  - Symptoms: some training windows looked good, but final task metrics stayed poor.
+  - Root causes:
+    - train-time parser accepted outputs that eval rejected
+    - policy overfit to easy action templates without robust decision quality
+  - Outcome: structurally improved traces, but still weak release decisions.
+
+### Passed/stronger experiments
+
+- **Run pattern: low clipping, terminated length tracks completion length, non-zero gradient events**
+  - Symptoms: cleaner JSON actions, better stop behavior, more stable optimization.
+  - Changes that helped:
+    - prompt/chat-template alignment across training and evaluation
+    - strict JSON extraction + trailing-text penalties
+    - better stop-token handling and completion budget tuning
+    - KL regularization + lighter/faster hyperparameter profile for more iterations
+  - Outcome: stronger valid-action rate and more reliable environment interaction.
+
+- **Best end-to-end run (so far)**
+  - Evaluation signal: `avg_reward=3.09`, `completion_rate=1.0`, `valid_action_rate=1.0`.
+  - Why it matters: this run produced the best combination of action validity and rollout completion under the current benchmark tasks.
+
+### Practical takeaway
+
+For this benchmark, "output validity + clean termination + protocol consistency" is a prerequisite for reward improvement. Without that triad, GRPO can look active in logs while still failing on actual release-safety tasks.
+
+---
+
 ## Current Results
 
 Recent lightweight runs show healthier dynamics:
@@ -205,37 +247,37 @@ The plots below are generated directly from GRPO training logs and show why the 
 
 ### Reward trend over iterations
 
-![GRPO Reward Curve](artifacts/grpo_log_analysis/reward.png)
+![GRPO Reward Curve](https://huggingface.co/spaces/madhuria/patch2prod-arena/resolve/main/artifacts/grpo_log_analysis/reward.png)
 
 This shows the reward trajectory during training, including stable high-reward regions with occasional dip events that mark harder states.
 
 ### Loss behavior
 
-![GRPO Loss Curve](artifacts/grpo_log_analysis/loss.png)
+![GRPO Loss Curve](https://huggingface.co/spaces/madhuria/patch2prod-arena/resolve/main/artifacts/grpo_log_analysis/loss.png)
 
 Loss remains near zero for many steps with intermittent spikes, which is expected in policy optimization with changing sampled trajectories.
 
 ### Gradient norm stability
 
-![GRPO Grad Norm Curve](artifacts/grpo_log_analysis/grad_norm.png)
+![GRPO Grad Norm Curve](https://huggingface.co/spaces/madhuria/patch2prod-arena/resolve/main/artifacts/grpo_log_analysis/grad_norm.png)
 
 Gradient spikes align with harder transitions and reward dips; otherwise gradients remain controlled.
 
 ### Policy entropy
 
-![GRPO Entropy Curve](artifacts/grpo_log_analysis/entropy.png)
+![GRPO Entropy Curve](https://huggingface.co/spaces/madhuria/patch2prod-arena/resolve/main/artifacts/grpo_log_analysis/entropy.png)
 
 Entropy declines over time (policy sharpening), while temporary bumps reflect exploration near uncertain transitions.
 
 ### Completion health (mean length + terminated length)
 
-![GRPO Completion vs Terminated Length](artifacts/grpo_log_analysis/completion_length_vs_terminated.png)
+![GRPO Completion vs Terminated Length](https://huggingface.co/spaces/madhuria/patch2prod-arena/resolve/main/artifacts/grpo_log_analysis/completion_length_vs_terminated.png)
 
 Termination closely tracks generated length in improved runs, a major fix versus early clipped runs.
 
 ### Clipping ratio
 
-![GRPO Clipped Ratio](artifacts/grpo_log_analysis/clipped_ratio.png)
+![GRPO Clipped Ratio](https://huggingface.co/spaces/madhuria/patch2prod-arena/resolve/main/artifacts/grpo_log_analysis/clipped_ratio.png)
 
 Low clipping indicates the model usually finishes actions naturally instead of hitting `max_completion_length`.
 

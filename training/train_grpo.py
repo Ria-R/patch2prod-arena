@@ -491,24 +491,32 @@ def main():
     }
 
     if "max_prompt_length" in grpo_sig:
-        grpo_kwargs["max_prompt_length"] = 1536
+        grpo_kwargs["max_prompt_length"] = 768
     if "temperature" in grpo_sig:
         grpo_kwargs["temperature"] = args.temperature
 
-    # EOS/pad token ids for generation so the model can terminate early.
-    gen_kw: Dict[str, Any] = {}
+    # Build a list of stop token IDs: EOS + closing-brace token so the model
+    # terminates immediately after emitting valid JSON.
+    stop_ids: List[int] = []
     if tokenizer.eos_token_id is not None:
-        gen_kw["eos_token_id"] = tokenizer.eos_token_id
-    if tokenizer.pad_token_id is not None:
-        gen_kw["pad_token_id"] = tokenizer.pad_token_id
-    # Force stop on "}\n" pattern so model ends after valid JSON.
+        stop_ids.append(tokenizer.eos_token_id)
     if hasattr(tokenizer, "encode"):
         try:
-            stop_ids = tokenizer.encode("}\n", add_special_tokens=False)
-            if stop_ids:
-                gen_kw.setdefault("eos_token_id", stop_ids[-1])
+            # "}" alone (no newline) — Qwen tokenises this as a single token.
+            brace_ids = tokenizer.encode("}", add_special_tokens=False)
+            if brace_ids:
+                stop_ids.append(brace_ids[-1])
         except Exception:
             pass
+    # Deduplicate while preserving order.
+    seen: set = set()
+    stop_ids = [x for x in stop_ids if not (x in seen or seen.add(x))]  # type: ignore[func-returns-value]
+
+    gen_kw: Dict[str, Any] = {}
+    if stop_ids:
+        gen_kw["eos_token_id"] = stop_ids  # list triggers multi-token early stopping
+    if tokenizer.pad_token_id is not None:
+        gen_kw["pad_token_id"] = tokenizer.pad_token_id
     if gen_kw and "generation_kwargs" in grpo_sig:
         grpo_kwargs["generation_kwargs"] = gen_kw
 

@@ -17,21 +17,20 @@ python training/generate_grpo_data.py \
   --tasks data/eval_tasks.jsonl \
   --out   data/grpo_train_states.jsonl \
   --max_steps 24 \
-  --augment_copies 12
+  --augment_copies "${GRPO_AUGMENT_COPIES:-4}"
 
 TRAIN_ARGS=(
   --model madhuria/patch2prod-sft-agent
   --base_model Qwen/Qwen2.5-0.5B-Instruct
   --train data/grpo_train_states.jsonl
   --out outputs/grpo_patch2prod_lora
-  --epochs "${GRPO_EPOCHS:-2}"
+  --epochs "${GRPO_EPOCHS:-1}"
   --learning_rate "${GRPO_LEARNING_RATE:-1e-5}"
   --per_device_train_batch_size "${GRPO_PER_DEVICE_BATCH_SIZE:-2}"
-  --gradient_accumulation_steps "${GRPO_GRAD_ACCUM_STEPS:-4}"
-  --max_completion_length "${GRPO_MAX_COMPLETION_LENGTH:-128}"
+  --gradient_accumulation_steps "${GRPO_GRAD_ACCUM_STEPS:-2}"
+  --max_completion_length "${GRPO_MAX_COMPLETION_LENGTH:-96}"
   --num_generations "${GRPO_NUM_GENERATIONS:-4}"
-  --temperature "${GRPO_TEMPERATURE:-0.7}"
-  --no_chat_template
+  --temperature "${GRPO_TEMPERATURE:-0.6}"
 )
 
 # Disable checkpointing by default in the remote job for faster wall-clock

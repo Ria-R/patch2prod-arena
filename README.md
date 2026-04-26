@@ -1,3 +1,15 @@
+---
+title: Patch2Prod Arena
+emoji: "🛠️"
+colorFrom: orange
+colorTo: blue
+sdk: static
+sdk_version: "1.0.0"
+python_version: "3.11"
+app_file: demo-ui/index.html
+pinned: false
+---
+
 # Patch2Prod Arena
 
 Patch2Prod Arena is an OpenEnv-style environment for training agents to answer the harder production question after CI goes green:
@@ -108,6 +120,14 @@ Run the server locally:
 ```bash
 uvicorn patch2prod.server:app --host 0.0.0.0 --port 8000
 ```
+
+Demo frontend (static):
+
+```bash
+python -m http.server 5173 --directory demo-ui
+```
+
+Then open [http://localhost:5173](http://localhost:5173) and point API Base URL to `http://localhost:8000`.
 
 Docker:
 

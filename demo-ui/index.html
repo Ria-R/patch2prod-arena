@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Patch2Prod Arena Demo</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div>
+        <h1>Patch2Prod Arena</h1>
+        <p>Green CI is not the same as safe to ship.</p>
+      </div>
+      <nav>
+        <a href="https://github.com/Ria-R/patch2prod-arena" target="_blank" rel="noreferrer">GitHub Repo</a>
+        <a href="https://huggingface.co/spaces/madhuria/patch2prod-arena" target="_blank" rel="noreferrer">HF Space</a>
+      </nav>
+    </header>
+
+    <section class="panel">
+      <h2>Scenario</h2>
+      <div id="scenarioCards" class="scenario-grid"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Incremental Improvement</h2>
+      <div class="improve-grid">
+        <article class="stage">
+          <h3>Baseline Agent</h3>
+          <p>Fixes CI and ships too early.</p>
+          <div id="baselineResult" class="result">Not run</div>
+          <button id="runBaselineBtn" class="btn-soft">Run Baseline</button>
+        </article>
+        <article class="stage">
+          <h3>SFT / GRPO Agent</h3>
+          <p>Checks commit + diff + blast radius before decision.</p>
+          <div id="trainedResult" class="result">Not run</div>
+          <button id="runTrainedBtn" class="btn-primary">Run SFT / GRPO</button>
+        </article>
+        <article class="stage">
+          <h3>Improved Reference</h3>
+          <p>Safety-first flow with strongest evidence coverage.</p>
+          <div id="referenceResult" class="result">Not run</div>
+          <button id="runReferenceBtn" class="btn-strong">Run Reference</button>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="evidence-head">
+        <h2>Demo Evidence</h2>
+        <div class="picker">
+          <span>View:</span>
+          <button id="pickBaselineBtn" class="pick-btn">Baseline</button>
+          <button id="pickTrainedBtn" class="pick-btn active">SFT / GRPO</button>
+          <button id="pickReferenceBtn" class="pick-btn">Reference</button>
+        </div>
+      </div>
+      <div class="subtabs">
+        <button class="subtab active" data-subtab="timelinePanel">Timeline</button>
+        <button class="subtab" data-subtab="graphPanel">Dependency Graph</button>
+        <button class="subtab" data-subtab="rewardPanel">Reward Breakdown</button>
+        <button class="subtab" data-subtab="decisionPanel">Final Decision</button>
+      </div>
+      <div id="timelinePanel" class="subpanel active"><div id="timeline" class="list"></div></div>
+      <div id="graphPanel" class="subpanel"><div id="graph" class="list"></div></div>
+      <div id="rewardPanel" class="subpanel"><div id="rewardBreakdown" class="list"></div></div>
+      <div id="decisionPanel" class="subpanel"><div id="decisionCard" class="decision"></div></div>
+    </section>
+
+    <footer class="footer">Built by Madhuria Rudra</footer>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>

@@ -138,3 +138,31 @@ def get_task(task_id: str) -> Dict[str, Any]:
     if task_id not in TASKS:
         raise KeyError(f"Unknown task_id={task_id}. Available: {list(TASKS)}")
     return deepcopy(TASKS[task_id])
+
+
+def list_tasks() -> list[Dict[str, str]]:
+    out: list[Dict[str, str]] = []
+    for task_id, task in TASKS.items():
+        out.append(
+            {
+                "task_id": task_id,
+                "title": task.get("title", task_id),
+                "service": task.get("service", "unknown"),
+                "failed_job": task.get("failed_job", "unknown"),
+            }
+        )
+    return out
+
+
+def find_task_for_ci_event(service: str | None = None, job_name: str | None = None) -> str | None:
+    """Best-effort mapping from CI event metadata to a known arena task_id."""
+    service_norm = (service or "").strip().lower()
+    job_norm = (job_name or "").strip().lower()
+    for task_id, task in TASKS.items():
+        task_service = str(task.get("service", "")).strip().lower()
+        task_job = str(task.get("failed_job", "")).strip().lower()
+        if service_norm and task_service and service_norm == task_service:
+            return task_id
+        if job_norm and task_job and job_norm == task_job:
+            return task_id
+    return None

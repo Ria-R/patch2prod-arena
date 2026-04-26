@@ -24,15 +24,21 @@ TRAIN_ARGS=(
   --base_model Qwen/Qwen2.5-0.5B-Instruct
   --train data/grpo_train_states.jsonl
   --out outputs/grpo_patch2prod_lora
-  --epochs 3
-  --learning_rate 1e-5
-  --per_device_train_batch_size 1
-  --gradient_accumulation_steps 8
-  --max_completion_length 320
-  --num_generations 8
-  --temperature 0.8
+  --epochs "${GRPO_EPOCHS:-2}"
+  --learning_rate "${GRPO_LEARNING_RATE:-1e-5}"
+  --per_device_train_batch_size "${GRPO_PER_DEVICE_BATCH_SIZE:-2}"
+  --gradient_accumulation_steps "${GRPO_GRAD_ACCUM_STEPS:-4}"
+  --max_completion_length "${GRPO_MAX_COMPLETION_LENGTH:-128}"
+  --num_generations "${GRPO_NUM_GENERATIONS:-4}"
+  --temperature "${GRPO_TEMPERATURE:-0.7}"
   --no_chat_template
 )
+
+# Disable checkpointing by default in the remote job for faster wall-clock
+# training when GPU memory allows. Override with GRPO_NO_GC=0 if needed.
+if [ "${GRPO_NO_GC:-1}" = "1" ]; then
+  TRAIN_ARGS+=(--no_gradient_checkpointing)
+fi
 
 if [ "${ACCELERATE_NUM_PROCESSES:-1}" -gt 1 ]; then
   echo "Using accelerate with ${ACCELERATE_NUM_PROCESSES} processes"

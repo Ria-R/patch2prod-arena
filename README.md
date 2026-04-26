@@ -1,7 +1,7 @@
 ---
 title: Patch2Prod Arena
 emoji: "🛠️"
-colorFrom: orange
+colorFrom: yellow
 colorTo: blue
 sdk: static
 sdk_version: "1.0.0"

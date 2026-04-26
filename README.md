@@ -1,10 +1,10 @@
 ---
-title: OpenEnv CICD Triage
+title: Patch2Prod Arena
 emoji: 🛠️
-colorFrom: blue
-colorTo: green
+colorFrom: yellow
+colorTo: blue
 sdk: docker
-app_file: openenv_cicd_triage/server/app.py
+app_file: demo-ui/app.js
 pinned: false
 ---
 
@@ -189,3 +189,5 @@ Improved policy behavior:
 - Makes a safer release decision.
 
 This project is built to show that green CI is not enough when downstream contracts, release safety, and owner coordination still matter.
+
+<!-- refresh: force HF Space rebuild -->

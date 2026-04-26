@@ -11,5 +11,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 RUN pip install --no-cache-dir -e .
 
-EXPOSE 8000
-CMD ["uvicorn", "patch2prod.server:app", "--host", "0.0.0.0", "--port", "8000"]
+EXPOSE 7860
+CMD ["sh", "-c", "uvicorn patch2prod.server:app --host 0.0.0.0 --port ${PORT:-7860}"]

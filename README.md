@@ -1,20 +1,10 @@
 ---
-title: Patch2Prod Arena
+title: OpenEnv CICD Triage
 emoji: 🛠️
-colorFrom: yellow
-colorTo: blue
-sdk: static
-app_file: index.html
-fullWidth: true
-header: default
-short_description: Agent benchmark for release safety beyond green CI.
-suggested_hardware: l40sx1
-tags:
-  - openenv
-  - ci-cd
-  - release-engineering
-  - llm-agents
-  - reinforcement-learning
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_file: openenv_cicd_triage/server/app.py
 pinned: false
 ---
 

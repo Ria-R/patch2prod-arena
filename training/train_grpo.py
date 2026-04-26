@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import inspect
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -107,9 +108,26 @@ def trim_to_first_json_object(text: str) -> str:
     return text[start:].strip()
 
 
-def parse_action(text: str) -> Tuple[bool, Dict[str, Any] | None, str]:
+def parse_action(text: str, strict: bool = True) -> Tuple[bool, Dict[str, Any] | None, str]:
+    """Parse a model completion into a validated action dict.
+
+    In strict mode (used during training) the JSON must appear at the very
+    beginning of the text (after stripping whitespace). This forces the model to
+    learn to emit clean JSON immediately rather than hiding a correct JSON object
+    somewhere inside a wall of prose — which was causing reward=4 during training
+    but low eval scores because the live environment received garbage.
+    """
+    stripped = text.strip()
+
+    if strict:
+        # Accept only completions that start with '{'  (possibly preceded by
+        # optional BOS/whitespace but no prose sentences).
+        leading = stripped[:5].lstrip()
+        if not leading.startswith("{"):
+            return False, None, "json_not_at_start"
+
     try:
-        trimmed = trim_to_first_json_object(text)
+        trimmed = trim_to_first_json_object(stripped)
         obj = json.loads(trimmed)
     except Exception as e:
         return False, None, f"invalid_json:{e}"
@@ -215,7 +233,8 @@ def process_reward(pred: Dict[str, Any], prompt: str) -> float:
     return reward
 
 
-_debug_logged: set = set()  # track which batch steps we already logged
+_debug_logged: set = set()  # track which failure reasons we already logged
+_rng = __import__("random").Random(42)
 
 
 def make_reward_func():
@@ -242,11 +261,11 @@ def make_reward_func():
                 rewards.append(-2.0)
                 continue
 
-            ok, pred, reason = parse_action(text)
+            # Strict parse: JSON must be at the very start of the completion so
+            # the model cannot hide correct JSON inside prose and still earn reward.
+            ok, pred, reason = parse_action(text, strict=True)
 
             if not ok or pred is None:
-                # Log one failing sample every 50 calls so we can see what
-                # the model actually generates without flooding the output.
                 key = reason.split(":")[0]
                 if key not in _debug_logged:
                     _debug_logged.add(key)
@@ -257,17 +276,33 @@ def make_reward_func():
                         file=sys.stderr,
                         flush=True,
                     )
-                rewards.append(-2.0)
+                # Add small jitter to -2 penalty so not all failing completions
+                # in a batch get identical rewards (prevents zero advantage).
+                rewards.append(-2.0 + _rng.uniform(-0.3, 0.3))
                 continue
 
-            reward = 1.0  # valid JSON/action base reward
+            reward = 1.0  # valid JSON / action base reward
             reward += action_similarity_reward(pred, gold)
             reward += process_reward(pred, prompt_i)
 
-            # Slight length/prose penalty.
-            trimmed = trim_to_first_json_object(text)
-            if len(text.strip()) > len(trimmed) + 5:
-                reward -= 0.5
+            # EOS / brevity bonus: reward completions that are short after the
+            # closing brace, which means the model actually stopped cleanly.
+            trimmed = trim_to_first_json_object(text.strip())
+            trailing = len(text.strip()) - len(trimmed)
+            if trailing <= 3:
+                # Model stopped at or immediately after the JSON — ideal.
+                reward += 0.5
+            elif trailing <= 20:
+                # A tiny bit of trailing whitespace / newline — acceptable.
+                pass
+            else:
+                # Model continued generating prose after the JSON — penalise
+                # proportionally so longer tails are punished more.
+                reward -= min(1.5, 0.05 * trailing)
+
+            # Inject tiny jitter on positive rewards so batches that would
+            # otherwise all score the same value still produce non-zero advantage.
+            reward += _rng.uniform(-0.05, 0.05)
 
             rewards.append(float(reward))
 
@@ -349,6 +384,10 @@ def load_model_and_tokenizer(model_path: str, base_model: str | None):
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
+    world_size = int(os.environ.get("WORLD_SIZE", "1"))
+    distributed = world_size > 1
+    device_map = None if distributed else "auto"
+
     if adapter_cfg is not None:
         if PeftModel is None:
             raise RuntimeError("peft is required to load LoRA adapters.")
@@ -359,7 +398,7 @@ def load_model_and_tokenizer(model_path: str, base_model: str | None):
         base = AutoModelForCausalLM.from_pretrained(
             base_model,
             dtype=torch.bfloat16 if torch.cuda.is_available() else torch.float32,
-            device_map="auto",
+            device_map=device_map,
             trust_remote_code=True,
         )
         model = PeftModel.from_pretrained(base, model_path, is_trainable=True)
@@ -367,7 +406,7 @@ def load_model_and_tokenizer(model_path: str, base_model: str | None):
         model = AutoModelForCausalLM.from_pretrained(
             model_path,
             dtype=torch.bfloat16 if torch.cuda.is_available() else torch.float32,
-            device_map="auto",
+            device_map=device_map,
             trust_remote_code=True,
         )
 
@@ -383,30 +422,35 @@ def main():
     parser.add_argument("--out", default="outputs/grpo_patch2prod_lora")
     parser.add_argument("--epochs", type=float, default=3.0)
     parser.add_argument("--learning_rate", type=float, default=1e-5)
-    parser.add_argument("--per_device_train_batch_size", type=int, default=2)
-    parser.add_argument("--gradient_accumulation_steps", type=int, default=4)
+    parser.add_argument("--per_device_train_batch_size", type=int, default=1)
+    parser.add_argument("--gradient_accumulation_steps", type=int, default=8)
     parser.add_argument(
         "--max_completion_length",
         type=int,
-        default=192,
-        help="Token budget for one JSON action; too small causes clipped JSON.",
+        default=320,
+        help="Token budget for one JSON action. 320 gives enough room for any valid action without runaway generation.",
     )
     parser.add_argument(
         "--num_generations",
         type=int,
-        default=4,
-        help="GRPO needs per-prompt variance; use >=2 and prefer 4+ if batch size allows.",
+        default=8,
+        help="More generations per prompt → more reward variance → stronger GRPO signal.",
     )
     parser.add_argument(
         "--temperature",
         type=float,
-        default=0.7,
-        help=">0 yields diverse completions so rewards are not identical every time.",
+        default=0.8,
+        help="Higher temperature diversifies completions so rewards differ within a batch.",
     )
     parser.add_argument(
         "--no_chat_template",
         action="store_true",
         help="Disable apply_chat_template wrapping (not recommended for Instruct models).",
+    )
+    parser.add_argument(
+        "--no_gradient_checkpointing",
+        action="store_true",
+        help="Disable gradient checkpointing (saves time but uses more VRAM).",
     )
     args = parser.parse_args()
 
@@ -416,8 +460,10 @@ def main():
         dataset = apply_chat_template_to_prompts(dataset, tokenizer)
 
     grpo_sig = inspect.signature(GRPOConfig.__init__).parameters
-    # TRL: `max_prompt_length` existed on older GRPOConfig; recent releases dropped it
-    # (prompt length follows model max / tokenizer; use dataset truncation if needed).
+
+    use_bf16 = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
+    use_gc = not args.no_gradient_checkpointing
+
     grpo_kwargs: Dict[str, Any] = {
         "output_dir": args.out,
         "num_train_epochs": args.epochs,
@@ -430,21 +476,46 @@ def main():
         "num_generations": args.num_generations,
         "max_completion_length": args.max_completion_length,
         "remove_unused_columns": False,
+        # Throughput: mixed precision + gradient checkpointing
+        "bf16": use_bf16,
+        "fp16": not use_bf16 and torch.cuda.is_available(),
+        "gradient_checkpointing": use_gc,
+        # Dataloader workers run in parallel to generation — free throughput.
+        "dataloader_num_workers": min(4, os.cpu_count() or 1),
+        "dataloader_pin_memory": torch.cuda.is_available(),
+        # Warmup helps stability with RL objectives.
+        "warmup_ratio": 0.05,
+        # Stop saving every epoch to avoid disk thrash; save best + last.
+        "save_total_limit": 2,
+        "load_best_model_at_end": False,
     }
+
     if "max_prompt_length" in grpo_sig:
         grpo_kwargs["max_prompt_length"] = 1536
     if "temperature" in grpo_sig:
         grpo_kwargs["temperature"] = args.temperature
 
+    # EOS/pad token ids for generation so the model can terminate early.
     gen_kw: Dict[str, Any] = {}
     if tokenizer.eos_token_id is not None:
         gen_kw["eos_token_id"] = tokenizer.eos_token_id
     if tokenizer.pad_token_id is not None:
         gen_kw["pad_token_id"] = tokenizer.pad_token_id
+    # Force stop on "}\n" pattern so model ends after valid JSON.
+    if hasattr(tokenizer, "encode"):
+        try:
+            stop_ids = tokenizer.encode("}\n", add_special_tokens=False)
+            if stop_ids:
+                gen_kw.setdefault("eos_token_id", stop_ids[-1])
+        except Exception:
+            pass
     if gen_kw and "generation_kwargs" in grpo_sig:
         grpo_kwargs["generation_kwargs"] = gen_kw
 
     config = GRPOConfig(**grpo_kwargs)
+
+    if use_gc:
+        model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
 
     trainer = GRPOTrainer(
         model=model,

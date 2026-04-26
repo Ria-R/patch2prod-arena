@@ -19,18 +19,29 @@ python training/generate_grpo_data.py \
   --max_steps 24 \
   --augment_copies 12
 
-python training/train_grpo.py \
-  --model madhuria/patch2prod-sft-agent \
-  --base_model Qwen/Qwen2.5-0.5B-Instruct \
-  --train data/grpo_train_states.jsonl \
-  --out outputs/grpo_patch2prod_lora \
-  --epochs 3 \
-  --learning_rate 1e-5 \
-  --gradient_accumulation_steps 4 \
-  --max_completion_length 192 \
-  --num_generations 4 \
-  --temperature 0.7 \
+TRAIN_ARGS=(
+  --model madhuria/patch2prod-sft-agent
+  --base_model Qwen/Qwen2.5-0.5B-Instruct
+  --train data/grpo_train_states.jsonl
+  --out outputs/grpo_patch2prod_lora
+  --epochs 3
+  --learning_rate 1e-5
+  --per_device_train_batch_size 1
+  --gradient_accumulation_steps 8
+  --max_completion_length 320
+  --num_generations 8
+  --temperature 0.8
   --no_chat_template
+)
+
+if [ "${ACCELERATE_NUM_PROCESSES:-1}" -gt 1 ]; then
+  echo "Using accelerate with ${ACCELERATE_NUM_PROCESSES} processes"
+  accelerate launch \
+    --num_processes "${ACCELERATE_NUM_PROCESSES}" \
+    training/train_grpo.py "${TRAIN_ARGS[@]}"
+else
+  python training/train_grpo.py "${TRAIN_ARGS[@]}"
+fi
 
 python training/evaluate_grpo_policy.py \
   --model outputs/grpo_patch2prod_lora \

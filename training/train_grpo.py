@@ -529,8 +529,6 @@ def main():
         "dataloader_pin_memory": torch.cuda.is_available(),
         # Warmup helps stability with RL objectives.
         "warmup_ratio": 0.05,
-        # KL penalty prevents entropy collapse and policy over-specialisation.
-        "kl_coef": 0.05,
         # Stop saving every epoch to avoid disk thrash; save best + last.
         "save_total_limit": 2,
         "load_best_model_at_end": False,
@@ -540,6 +538,8 @@ def main():
         grpo_kwargs["max_prompt_length"] = 768
     if "temperature" in grpo_sig:
         grpo_kwargs["temperature"] = args.temperature
+    if "kl_coef" in grpo_sig:
+        grpo_kwargs["kl_coef"] = 0.05
 
     # Only use the normal EOS token as the stop signal.
     # The "}" brace token must NOT be a stop token: valid JSON has nested

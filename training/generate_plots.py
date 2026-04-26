@@ -254,37 +254,56 @@ def plot_unsafe_ship_rate(rows: List[Dict[str, Any]]) -> None:
     plt.close()
 
 
+_PANEL_CONFIG = [
+    ("loss",       "Loss",            "Training loss per step"),
+    ("grad_norm",  "Gradient norm",   "Gradient norm per step"),
+    ("reward",     "Reward",          "Mean reward per step"),
+    ("entropy",    "Entropy",         "Policy entropy per step"),
+]
+
+
+def _extract_series(history: Dict[str, Any] | None, key: str):
+    """Return (steps, values) from a history dict, or (None, None) if empty."""
+    if not history:
+        return None, None
+    points = history.get(key) or []
+    if not points:
+        return None, None
+    steps = [p["step"] for p in points]
+    values = [p["value"] for p in points]
+    return steps, values
+
+
 def plot_loss_curve() -> None:
     """
-    Uses artifacts/training_history.json if present.
+    Multi-panel training metrics plot from artifacts/training_history.json.
 
-    Expected format:
-    {
-      "loss": [{"step": 1, "value": 2.1}, {"step": 2, "value": 1.8}],
-      "reward": [{"step": 1, "value": 0.8}, {"step": 2, "value": 2.1}]
-    }
-
-    If no history exists yet, creates a clearly labeled placeholder using
-    reference-stage values so the README has a committed image. Replace after
-    real SFT/GRPO.
+    Panels: loss | grad_norm | reward | entropy
+    Written live during GRPO training by LiveMetricsCallback.
+    Falls back to a placeholder when history is not yet available.
     """
     history = load_json(TRAINING_HISTORY_PATH)
 
-    if history and history.get("loss"):
-        points = history["loss"]
-        steps = [p["step"] for p in points]
-        values = [p["value"] for p in points]
-        title = "Training loss"
-    else:
-        steps = [0, 1, 2]
-        values = [2.4, 1.8, 1.4]
-        title = "Training loss placeholder: replace after SFT/GRPO run"
+    has_real_data = history and any(history.get(k) for k, *_ in _PANEL_CONFIG)
 
-    plt.figure(figsize=(8, 5))
-    plt.plot(steps, values, marker="o")
-    plt.xlabel("Training step / checkpoint")
-    plt.ylabel("Loss")
-    plt.title(title)
+    fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+    fig.suptitle("GRPO Training Metrics" + ("" if has_real_data else " (placeholder)"), fontsize=13)
+
+    placeholder_xy = ([0, 1, 2], [0.0, 0.0, 0.0])
+
+    for ax, (key, ylabel, title) in zip(axes.flat, _PANEL_CONFIG):
+        steps, values = _extract_series(history, key)
+        if steps is None:
+            steps, values = placeholder_xy
+            ax.plot(steps, values, "o--", color="lightgray")
+            ax.set_title(f"{title} (no data yet)")
+        else:
+            ax.plot(steps, values, marker="o", markersize=3, linewidth=1.2)
+            ax.set_title(title)
+        ax.set_xlabel("Step")
+        ax.set_ylabel(ylabel)
+        ax.grid(True, alpha=0.3)
+
     plt.tight_layout()
     plt.savefig(PLOT_DIR / "loss_curve.png", dpi=160)
     plt.close()

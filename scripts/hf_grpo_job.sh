@@ -25,7 +25,7 @@ TRAIN_ARGS=(
   --train data/grpo_train_states.jsonl
   --out outputs/grpo_patch2prod_lora
   --epochs "${GRPO_EPOCHS:-1}"
-  --learning_rate "${GRPO_LEARNING_RATE:-1e-5}"
+  --learning_rate "${GRPO_LEARNING_RATE:-5e-6}"
   --per_device_train_batch_size "${GRPO_PER_DEVICE_BATCH_SIZE:-2}"
   --gradient_accumulation_steps "${GRPO_GRAD_ACCUM_STEPS:-2}"
   --max_completion_length "${GRPO_MAX_COMPLETION_LENGTH:-96}"

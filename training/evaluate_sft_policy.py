@@ -345,7 +345,19 @@ def load_model(model_path: str, base_model: str | None = None):
 
 
 def generate_action(model, tokenizer, prompt: str, max_new_tokens: int = 192) -> Tuple[str, bool, str, Dict[str, Any] | None]:
-    inputs = tokenizer(prompt.strip() + "\n", return_tensors="pt").to(model.device)
+    # Apply the chat template when available so eval format matches GRPO training.
+    # If the tokenizer has no chat_template (e.g. base models), fall back to
+    # the raw prompt with a trailing newline as before.
+    if getattr(tokenizer, "chat_template", None):
+        formatted = tokenizer.apply_chat_template(
+            [{"role": "user", "content": prompt.strip()}],
+            tokenize=False,
+            add_generation_prompt=True,
+        )
+    else:
+        formatted = prompt.strip() + "\n"
+
+    inputs = tokenizer(formatted, return_tensors="pt").to(model.device)
 
     with torch.no_grad():
         out = model.generate(

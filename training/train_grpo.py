@@ -14,13 +14,57 @@ from typing import Any, Dict, List, Tuple
 import torch
 from datasets import Dataset
 from huggingface_hub import hf_hub_download
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, TrainerCallback, TrainerControl, TrainerState, TrainingArguments
 from trl import GRPOConfig, GRPOTrainer
 
 try:
     from peft import PeftModel
 except Exception:
     PeftModel = None
+
+
+_HISTORY_KEYS = ["loss", "grad_norm", "reward", "reward_std", "entropy"]
+
+
+class LiveMetricsCallback(TrainerCallback):
+    """Write per-step training metrics to artifacts/training_history.json after every log step."""
+
+    def __init__(self, out_path: str = "artifacts/training_history.json") -> None:
+        self._path = Path(out_path)
+        self._history: Dict[str, List[Dict[str, Any]]] = {k: [] for k in _HISTORY_KEYS}
+
+    def on_log(
+        self,
+        args: TrainingArguments,
+        state: TrainerState,
+        control: TrainerControl,
+        logs: Dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        if not logs:
+            return
+        step = state.global_step
+        for key in _HISTORY_KEYS:
+            # TRL logs reward under rewards/reward_func/mean or reward
+            candidates = [key, f"rewards/reward_func/mean" if key == "reward" else None]
+            for cand in candidates:
+                if cand and cand in logs:
+                    try:
+                        self._history[key].append({"step": step, "value": float(logs[cand])})
+                    except (TypeError, ValueError):
+                        pass
+                    break
+        self._flush()
+
+    def _flush(self) -> None:
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            self._path.write_text(
+                json.dumps(self._history, indent=2),
+                encoding="utf-8",
+            )
+        except Exception:
+            pass
 
 
 AVAILABLE_ACTIONS = {
@@ -421,7 +465,7 @@ def main():
     parser.add_argument("--train", default="data/grpo_train_states.jsonl")
     parser.add_argument("--out", default="outputs/grpo_patch2prod_lora")
     parser.add_argument("--epochs", type=float, default=3.0)
-    parser.add_argument("--learning_rate", type=float, default=1e-5)
+    parser.add_argument("--learning_rate", type=float, default=5e-6)
     parser.add_argument("--per_device_train_batch_size", type=int, default=1)
     parser.add_argument("--gradient_accumulation_steps", type=int, default=8)
     parser.add_argument(
@@ -485,6 +529,8 @@ def main():
         "dataloader_pin_memory": torch.cuda.is_available(),
         # Warmup helps stability with RL objectives.
         "warmup_ratio": 0.05,
+        # KL penalty prevents entropy collapse and policy over-specialisation.
+        "kl_coef": 0.05,
         # Stop saving every epoch to avoid disk thrash; save best + last.
         "save_total_limit": 2,
         "load_best_model_at_end": False,
@@ -495,26 +541,13 @@ def main():
     if "temperature" in grpo_sig:
         grpo_kwargs["temperature"] = args.temperature
 
-    # Build a list of stop token IDs: EOS + closing-brace token so the model
-    # terminates immediately after emitting valid JSON.
-    stop_ids: List[int] = []
-    if tokenizer.eos_token_id is not None:
-        stop_ids.append(tokenizer.eos_token_id)
-    if hasattr(tokenizer, "encode"):
-        try:
-            # "}" alone (no newline) — Qwen tokenises this as a single token.
-            brace_ids = tokenizer.encode("}", add_special_tokens=False)
-            if brace_ids:
-                stop_ids.append(brace_ids[-1])
-        except Exception:
-            pass
-    # Deduplicate while preserving order.
-    seen: set = set()
-    stop_ids = [x for x in stop_ids if not (x in seen or seen.add(x))]  # type: ignore[func-returns-value]
-
+    # Only use the normal EOS token as the stop signal.
+    # The "}" brace token must NOT be a stop token: valid JSON has nested
+    # braces (e.g. {"action_type":..., "params":{...}}) and stopping at the
+    # first "}" would truncate the outer object, producing invalid JSON at eval.
     gen_kw: Dict[str, Any] = {}
-    if stop_ids:
-        gen_kw["eos_token_id"] = stop_ids  # list triggers multi-token early stopping
+    if tokenizer.eos_token_id is not None:
+        gen_kw["eos_token_id"] = tokenizer.eos_token_id
     if tokenizer.pad_token_id is not None:
         gen_kw["pad_token_id"] = tokenizer.pad_token_id
     if gen_kw and "generation_kwargs" in grpo_sig:
@@ -525,12 +558,15 @@ def main():
     if use_gc:
         model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
 
+    metrics_cb = LiveMetricsCallback(out_path="artifacts/training_history.json")
+
     trainer = GRPOTrainer(
         model=model,
         processing_class=tokenizer,
         args=config,
         train_dataset=dataset,
         reward_funcs=make_reward_func(),
+        callbacks=[metrics_cb],
     )
 
     result = trainer.train()

@@ -233,45 +233,28 @@ GRPO entropy:
 
 ## Run Locally
 
-Without Docker:
+Docker (recommended):
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
+make docker
+```
+
+Opens at [http://localhost:7860](http://localhost:7860).
+
+Local dev (API + static UI, auto-finds free ports):
+
+```bash
 pip install -e .
-patch2prod-demo
+make dev
 ```
 
-This produces:
-- `artifacts/demo_results.json`
-- `artifacts/plots/reward_curve.png`
-
-Run the server locally:
+Generate demo artifacts (non-interactive):
 
 ```bash
-uvicorn patch2prod.server:app --host 0.0.0.0 --port 8000
+make demo
 ```
 
-Demo frontend (static):
-
-```bash
-python -m http.server 5173 --directory demo-ui
-```
-
-Then open [http://localhost:5173](http://localhost:5173).
-
-Docker:
-
-```bash
-docker build -t patch2prod-arena .
-docker run --rm -p 8000:8000 patch2prod-arena
-```
-
-Or:
-
-```bash
-docker compose up --build
-```
+On Hugging Face Spaces the container binds to `PORT` (default `7860`).
 
 ## Training
 
@@ -351,4 +334,4 @@ The goal is to move beyond "Can I make tests pass?" toward "Can this safely go t
 - report raw policy vs policy-plus-validator separately
 - keep improving UI for side-by-side decision evidence
 
-<!-- refresh: force HF Space rebuild -->
+Built by Madhuria Rudra.

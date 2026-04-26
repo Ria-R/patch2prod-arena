@@ -198,7 +198,8 @@ def ci_webhook_jenkins(payload: JenkinsWebhookPayload, x_patch2prod_token: Optio
 
 
 def main():
-    uvicorn.run("patch2prod.server:app", host="0.0.0.0", port=8000, reload=False)
+    port = int(os.getenv("PORT", "7860"))
+    uvicorn.run("patch2prod.server:app", host="0.0.0.0", port=port, reload=False)
 
 
 if __name__ == "__main__":

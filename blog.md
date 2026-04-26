@@ -305,6 +305,10 @@ The visual contrast should be:
 - baseline: local green, unsafe ship risk
 - improved: evidence-driven release gating
 
+### Deployment note (HF Space)
+
+For Docker deployment on Hugging Face Spaces, the app binds to `PORT` (fallback `7860`) instead of a fixed `8000`. This avoids startup hangs where the service is running but not on the port expected by Space health checks.
+
 ---
 
 ## Why This Matters

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import sys
 from pathlib import Path
 from typing import Any, Dict, List
@@ -79,12 +80,47 @@ def run_oracle_episode(
     return records
 
 
+def augment_prompt(prompt: str, task_id: str, step_idx: int, variant_idx: int) -> str:
+    """
+    Keep the core prompt semantics unchanged while adding light surface-form
+    variation so GRPO sees more prompt diversity.
+    """
+    prefixes = [
+        "Return exactly one JSON action object for the current step.",
+        "Output one valid action JSON object only.",
+        "Respond with one env action in strict JSON format.",
+        "Emit a single action object; no prose.",
+    ]
+    suffixes = [
+        "Stop at the closing brace.",
+        "No markdown and no explanation text.",
+        "Use schema: {\"action_type\":\"...\",\"params\":{...}} only.",
+        "Do not include code fences or extra tokens.",
+    ]
+    prefix = prefixes[variant_idx % len(prefixes)]
+    suffix = suffixes[variant_idx % len(suffixes)]
+    return (
+        f"{prompt}\n\n"
+        f"[grpo_variant={variant_idx}; task_id={task_id}; step={step_idx}]\n"
+        f"{prefix}\n"
+        f"{suffix}"
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate GRPO training data from env episodes")
     parser.add_argument("--tasks", default="data/eval_tasks.jsonl")
     parser.add_argument("--out", default="data/grpo_train_states.jsonl")
     parser.add_argument("--max_steps", type=int, default=24)
+    parser.add_argument(
+        "--augment_copies",
+        type=int,
+        default=8,
+        help="Number of prompt variants per oracle state (>=1).",
+    )
+    parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
+    random.seed(args.seed)
 
     tasks = load_jsonl(args.tasks)
     all_records: List[Dict[str, Any]] = []
@@ -93,8 +129,25 @@ def main() -> None:
         tid = task.get("task_id", "?")
         print(f"Generating episode for: {tid}")
         records = run_oracle_episode(task, max_steps=args.max_steps)
-        print(f"  → {len(records)} (prompt, gold_action) pairs")
-        all_records.extend(records)
+        expanded: List[Dict[str, Any]] = []
+        for step_idx, row in enumerate(records, 1):
+            for variant_idx in range(max(1, args.augment_copies)):
+                row_copy = dict(row)
+                row_copy["prompt"] = augment_prompt(
+                    row["prompt"],
+                    task_id=row.get("task_id") or tid,
+                    step_idx=step_idx,
+                    variant_idx=variant_idx,
+                )
+                row_copy["variant"] = f"aug_v{variant_idx}"
+                expanded.append(row_copy)
+
+        random.shuffle(expanded)
+        print(
+            f"  → {len(records)} base states, {len(expanded)} augmented "
+            f"(augment_copies={max(1, args.augment_copies)})"
+        )
+        all_records.extend(expanded)
 
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)

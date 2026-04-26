@@ -16,17 +16,20 @@ python -m pip install -e .
 python training/generate_grpo_data.py \
   --tasks data/eval_tasks.jsonl \
   --out   data/grpo_train_states.jsonl \
-  --max_steps 24
+  --max_steps 24 \
+  --augment_copies 12
 
 python training/train_grpo.py \
   --model madhuria/patch2prod-sft-agent \
   --base_model Qwen/Qwen2.5-0.5B-Instruct \
   --train data/grpo_train_states.jsonl \
   --out outputs/grpo_patch2prod_lora \
-  --epochs 1 \
-  --max_completion_length 384 \
+  --epochs 3 \
+  --learning_rate 1e-5 \
+  --gradient_accumulation_steps 4 \
+  --max_completion_length 192 \
   --num_generations 4 \
-  --temperature 0.85 \
+  --temperature 0.7 \
   --no_chat_template
 
 python training/evaluate_grpo_policy.py \

@@ -381,12 +381,15 @@ def main():
     parser.add_argument("--base_model", default="Qwen/Qwen2.5-0.5B-Instruct")
     parser.add_argument("--train", default="data/grpo_train_states.jsonl")
     parser.add_argument("--out", default="outputs/grpo_patch2prod_lora")
-    parser.add_argument("--epochs", type=float, default=1.0)
+    parser.add_argument("--epochs", type=float, default=3.0)
+    parser.add_argument("--learning_rate", type=float, default=1e-5)
+    parser.add_argument("--per_device_train_batch_size", type=int, default=2)
+    parser.add_argument("--gradient_accumulation_steps", type=int, default=4)
     parser.add_argument(
         "--max_completion_length",
         type=int,
-        default=384,
-        help="Token budget for one JSON action; too small → clipped_ratio=1 and reward=-2.",
+        default=192,
+        help="Token budget for one JSON action; too small causes clipped JSON.",
     )
     parser.add_argument(
         "--num_generations",
@@ -397,7 +400,7 @@ def main():
     parser.add_argument(
         "--temperature",
         type=float,
-        default=0.8,
+        default=0.7,
         help=">0 yields diverse completions so rewards are not identical every time.",
     )
     parser.add_argument(
@@ -418,9 +421,9 @@ def main():
     grpo_kwargs: Dict[str, Any] = {
         "output_dir": args.out,
         "num_train_epochs": args.epochs,
-        "per_device_train_batch_size": 2,
-        "gradient_accumulation_steps": 2,
-        "learning_rate": 5e-6,
+        "per_device_train_batch_size": args.per_device_train_batch_size,
+        "gradient_accumulation_steps": args.gradient_accumulation_steps,
+        "learning_rate": args.learning_rate,
         "logging_steps": 1,
         "save_strategy": "epoch",
         "report_to": [],

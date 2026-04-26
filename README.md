@@ -1,11 +1,20 @@
 ---
 title: Patch2Prod Arena
-emoji: "🛠️"
+emoji: 🛠️
 colorFrom: yellow
 colorTo: blue
 sdk: static
-sdk_version: "1.0.0"
 app_file: index.html
+fullWidth: true
+header: default
+short_description: Agent benchmark for release-safety decisions beyond green CI.
+suggested_hardware: l40sx1
+tags:
+  - openenv
+  - ci-cd
+  - release-engineering
+  - llm-agents
+  - reinforcement-learning
 pinned: false
 ---
 

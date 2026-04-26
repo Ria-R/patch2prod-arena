@@ -29,7 +29,9 @@ Patch2Prod Arena trains agents to go beyond local repair. The agent is rewarded 
   - [training/train_grpo.py](training/train_grpo.py)
   - HF job launcher: [scripts/launch_hf_grpo.sh](scripts/launch_hf_grpo.sh)
 - RL framework used: Hugging Face TRL GRPO (with LoRA adapters)
-- Re-runnable notebook (starter): [notebooks/SFT_Kaggle.ipynb](notebooks/SFT_Kaggle.ipynb)
+- Re-runnable notebook (starter):
+  - Local: [notebooks/sft-kaggle.ipynb](notebooks/sft-kaggle.ipynb)
+  - Kaggle: [SFT Kaggle Notebook](https://www.kaggle.com/code/madhuriar/sft-kaggle/edit)
 - Evidence of real training (loss/reward/grad/entropy plots):
   - [artifacts/grpo_log_analysis/loss.png](artifacts/grpo_log_analysis/loss.png)
   - [artifacts/grpo_log_analysis/reward.png](artifacts/grpo_log_analysis/reward.png)
